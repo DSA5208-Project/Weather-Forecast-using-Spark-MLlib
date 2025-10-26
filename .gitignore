@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Data files
+data/
+*.csv
+*.tar.gz
+*.zip
+*.parquet
+
+# Models
+models/
+*.model
+*.pkl
+*.joblib
+
+# Output
+output/
+*.png
+*.jpg
+*.pdf
+*.json
+
+# Spark
+metastore_db/
+derby.log
+spark-warehouse/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Credentials
+*.pem
+*.key
+credentials.json
+.env
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.cache/

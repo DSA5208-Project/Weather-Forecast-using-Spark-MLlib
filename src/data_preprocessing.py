@@ -504,7 +504,8 @@ class WeatherDataPreprocessor:
                         self.logger.info(f"  {feature}: filled {before_count:,} missing values with default ('{default_value}')")
         
         # Drop any remaining rows with null values in target
-        critical_columns = [config.TARGET_COLUMN]  # Target variable must not be null
+        # Ensure we drop rows where the parsed label column is missing
+        critical_columns = ["label"]  # Target variable must not be null
         before_count = df.count()
         df = df.dropna(subset=critical_columns)
         after_count = df.count()

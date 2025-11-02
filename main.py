@@ -80,6 +80,18 @@ def main():
         # Preprocess data
         processed_df = preprocessor.prepare_dataset(raw_df)
         
+        # Print DataFrame after preprocessing
+        logger.info("\n" + "=" * 60)
+        logger.info("DATAFRAME AFTER PREPROCESSING")
+        logger.info("=" * 60)
+        logger.info(f"Number of rows: {processed_df.count():,}")
+        logger.info(f"Number of columns: {len(processed_df.columns)}")
+        logger.info(f"\nSchema:")
+        processed_df.printSchema()
+        logger.info(f"\nFirst 20 rows:")
+        processed_df.show(20, truncate=False)
+        logger.info("=" * 60 + "\n")
+        
         logger.info("Data preprocessing completed\n")
         
         # ============================================================

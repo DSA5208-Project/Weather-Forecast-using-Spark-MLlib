@@ -35,7 +35,6 @@ class FeatureEngineer:
         self.selected_continuous_features = []
         self.selected_categorical_features = []
         self.selected_continuous_indices = []
-        self.selected_categorical_indices = []
         self.feature_scores = {}
         self.continuous_feature_names = []
         self.categorical_feature_names = []
@@ -82,7 +81,7 @@ class FeatureEngineer:
         # Combine selected features
         df = self._combine_final_features(df)
         
-        total_selected = len(self.selected_continuous_indices) + len(self.categorical_indices)
+        total_selected = len(self.selected_continuous_indices)
         self.logger.info("=" * 60)
         self.logger.info(f"FEATURE SELECTION COMPLETE")
         self.logger.info(f"Selected {total_selected} out of {total_features} features")
@@ -185,8 +184,7 @@ class FeatureEngineer:
         if len(self.selected_continuous_indices) > 0:
             cols_to_assemble.append("selected_continuous_features")
         
-        if len(self.categorical_indices) > 0:
-            cols_to_assemble.append("categorical_features")
+        cols_to_assemble.append("categorical_features")
         
         if len(cols_to_assemble) == 0:
             self.logger.warning("No features selected! Using original features.")

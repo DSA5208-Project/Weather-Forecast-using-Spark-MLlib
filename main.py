@@ -92,7 +92,7 @@ def main():
             feature_engineer = FeatureEngineer(spark)
 
             # Perform univariate feature selection (treats categorical and continuous separately)
-            featured_df = feature_engineer.select_features_by_type(
+            featured_df = feature_engineer.select_features(
                 processed_df,
                 preprocessor.continuous_features,
                 preprocessor.categorical_features

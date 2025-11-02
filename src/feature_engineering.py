@@ -152,12 +152,15 @@ class FeatureEngineer:
             featuresCol="continuous_features",
             outputCol="selected_continuous_features",
             labelCol="label",
-            featureType=config_params["featureType"],  # "continuous"
-            labelType=config_params["labelType"],      # "continuous" for regression
-            selectionMode=config_params["selectionMode"]
+            selectionMode=config_params["selectionMode"],
         )
-        
-        selector.setSelectionThreshold(config_params["selectionThreshold"])
+
+        if config_params.get("featureType"):
+            selector = selector.setFeatureType(config_params["featureType"])
+        if config_params.get("labelType"):
+            selector = selector.setLabelType(config_params["labelType"])
+        if config_params.get("selectionThreshold") is not None:
+            selector = selector.setSelectionThreshold(config_params["selectionThreshold"])
         
         self.logger.info(f"Configuration:")
         self.logger.info(f"  - Feature type: {config_params['featureType']}")
@@ -194,16 +197,32 @@ class FeatureEngineer:
         
         config_params = config.CATEGORICAL_FEATURE_SELECTION
         
+        feature_type = config_params.get("featureType")
+        label_type = config_params.get("labelType")
+
+        # Spark 3.5 does not support featureType="categorical" with a continuous label.
+        # The encoded categorical columns are numeric (one-hot), so fall back to treating
+        # them as continuous features while logging the adjustment.
+        if feature_type == "categorical" and label_type == "continuous":
+            self.logger.warning(
+                "Spark UnivariateFeatureSelector does not support featureType='categorical' "
+                "with a continuous label. Falling back to featureType='continuous'."
+            )
+            feature_type = "continuous"
+
         selector = UnivariateFeatureSelector(
             featuresCol="categorical_features",
             outputCol="selected_categorical_features",
             labelCol="label",
-            featureType=config_params["featureType"],  # "categorical"
-            labelType=config_params["labelType"],      # "continuous" for regression
-            selectionMode=config_params["selectionMode"]
+            selectionMode=config_params["selectionMode"],
         )
-        
-        selector.setSelectionThreshold(config_params["selectionThreshold"])
+
+        if feature_type:
+            selector = selector.setFeatureType(feature_type)
+        if label_type:
+            selector = selector.setLabelType(label_type)
+        if config_params.get("selectionThreshold") is not None:
+            selector = selector.setSelectionThreshold(config_params["selectionThreshold"])
         
         self.logger.info(f"Configuration:")
         self.logger.info(f"  - Feature type: {config_params['featureType']}")
@@ -222,9 +241,19 @@ class FeatureEngineer:
         self.logger.info(f"Selected indices: {sorted(self.selected_categorical_indices)}")
         
         # Get feature names
-        self.selected_categorical_features = [
-            self.categorical_feature_names[i] for i in self.selected_categorical_indices
-        ]
+        self.selected_categorical_features = []
+        for idx in self.selected_categorical_indices:
+            if idx < len(self.categorical_feature_names):
+                self.selected_categorical_features.append(self.categorical_feature_names[idx])
+            else:
+                placeholder = f"categorical_feature_{idx}"
+                self.logger.debug(
+                    "Selected categorical feature index %d exceeds available feature names. "
+                    "Using placeholder '%s'.",
+                    idx,
+                    placeholder,
+                )
+                self.selected_categorical_features.append(placeholder)
         self.logger.info(f"Selected features: {', '.join(self.selected_categorical_features)}")
         
         # Transform data

@@ -1,278 +1,459 @@
 """
-Data preprocessing module for weather forecast project
-Handles data loading, cleaning, and feature engineering
+Data Preprocessing Module for Weather Forecast Project
+Handles loading, cleaning, and preprocessing of NOAA weather data.
 """
 
-from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import col, when, regexp_extract, trim
-from pyspark.sql.types import DoubleType
-from pyspark.ml.feature import VectorAssembler, StandardScaler
-import config
+import logging
+import os
+import requests
+import tarfile
+from pyspark.sql import DataFrame
+from pyspark.sql.functions import (
+    col, when, isnan, count, udf, lit, hour, month, dayofyear, to_timestamp
+)
+from pyspark.sql.types import FloatType, IntegerType
+from pyspark.ml.feature import StandardScaler, VectorAssembler, StringIndexer
+from pyspark.ml import Pipeline
+
+import src.config as config
+from src.utils import (
+    parse_temperature_data, parse_dew_point_data, parse_sea_level_pressure,
+    parse_wind_data, parse_ceiling_data, parse_visibility_data,
+    extract_datetime_features
+)
 
 
-def create_spark_session(app_name="WeatherForecast"):
+class WeatherDataPreprocessor:
     """
-    Create and configure Spark session
+    Preprocessor for NOAA Global Hourly Weather Data.
+    Handles data loading, parsing, cleaning, and feature engineering.
+    """
     
-    Args:
-        app_name: Name of the Spark application
+    def __init__(self, spark):
+        """
+        Initialize the preprocessor.
         
-    Returns:
-        SparkSession object
-    """
-    builder = SparkSession.builder.appName(app_name)
-    
-    # Apply Spark configurations
-    for key, value in config.SPARK_CONFIG.items():
-        builder = builder.config(key, value)
-    
-    spark = builder.getOrCreate()
-    spark.sparkContext.setLogLevel("WARN")
-    
-    return spark
-
-
-def load_data(spark, file_path):
-    """
-    Load weather data from CSV file
-    
-    Args:
-        spark: SparkSession object
-        file_path: Path to the weather data file
+        Args:
+            spark (SparkSession): Active Spark session
+        """
+        self.spark = spark
+        self.logger = logging.getLogger(__name__)
+        self.scaler_model = None
+        self.feature_columns = []
         
-    Returns:
-        DataFrame with loaded data
-    """
-    print(f"Loading data from {file_path}...")
-    df = spark.read.csv(file_path, header=True, inferSchema=True)
-    print(f"Initial data shape: {df.count()} rows, {len(df.columns)} columns")
-    return df
-
-
-def parse_weather_value(column_name):
-    """
-    Parse weather observation values from the format 'value,quality_code'
-    Example: '+0023,1' -> 23
-    
-    Args:
-        column_name: Name of the column to parse
+    def load_data(self):
+        """
+        Load weather data from CSV file. Downloads data from DATASET_URL if not exists.
         
-    Returns:
-        Column expression with parsed numeric value
-    """
-    # Extract the numeric value before the comma
-    return regexp_extract(col(column_name), r'^([+-]?\d+)', 1).cast(DoubleType())
-
-
-def clean_data(df):
-    """
-    Clean and preprocess weather data
-    - Remove invalid values (9999, +9999, etc. indicate missing data)
-    - Parse weather observation format
-    - Handle missing values
-    
-    Args:
-        df: Input DataFrame
+        Args:
+            file_path (str): Path to CSV file. If None, uses config.
+            
+        Returns:
+            DataFrame: Loaded Spark DataFrame
+        """
+        # Check if data exists, if not, download it
+        if not os.path.exists(config.RAW_DATA_PATH):
+            self.logger.info(f"Data file not found at {config.RAW_DATA_PATH}")
+            self._download_and_extract_data()
         
-    Returns:
-        Cleaned DataFrame
-    """
-    print("\nCleaning data...")
-    
-    # Parse temperature column (TMP format: +0023,1)
-    if "TMP" in df.columns:
-        df = df.withColumn("TMP_raw", col("TMP"))
-        df = df.withColumn("TMP", parse_weather_value("TMP") / 10.0)  # Convert to actual temperature
-        # Remove invalid temperature values
-        df = df.filter((col("TMP") != 999.9) & (col("TMP").isNotNull()))
-    
-    # Parse dew point (DEW format: +0018,1)
-    if "DEW" in df.columns:
-        df = df.withColumn("DEW", parse_weather_value("DEW") / 10.0)
-        df = df.withColumn("DEW", when(col("DEW") == 999.9, None).otherwise(col("DEW")))
-    
-    # Parse sea level pressure (SLP format: 10134,1)
-    if "SLP" in df.columns:
-        df = df.withColumn("SLP", parse_weather_value("SLP") / 10.0)
-        df = df.withColumn("SLP", when(col("SLP") == 9999.9, None).otherwise(col("SLP")))
-    
-    # Parse wind speed (WND format: 070,1,N,0046,1)
-    if "WND" in df.columns:
-        df = df.withColumn("WND_speed", regexp_extract(col("WND"), r',N,(\d+),', 1).cast(DoubleType()) / 10.0)
-        df = df.withColumn("WND_speed", when(col("WND_speed") == 999.9, None).otherwise(col("WND_speed")))
-        df = df.withColumn("WND_direction", regexp_extract(col("WND"), r'^(\d+),', 1).cast(DoubleType()))
-        df = df.withColumn("WND_direction", when(col("WND_direction") == 999, None).otherwise(col("WND_direction")))
-    
-    # Parse visibility (VIS format: 016000,1,9,9)
-    if "VIS" in df.columns:
-        df = df.withColumn("VIS", regexp_extract(col("VIS"), r'^(\d+),', 1).cast(DoubleType()))
-        df = df.withColumn("VIS", when(col("VIS") == 999999, None).otherwise(col("VIS")))
-    
-    # Parse precipitation (AA1 format: 01,0000,9,1)
-    if "AA1" in df.columns:
-        df = df.withColumn("AA1_depth", regexp_extract(col("AA1"), r',(\d+),', 1).cast(DoubleType()) / 10.0)
-        df = df.withColumn("AA1_depth", when(col("AA1_depth") == 999.9, None).otherwise(col("AA1_depth")))
-    
-    print(f"Data after cleaning: {df.count()} rows")
-    
-    return df
-
-
-def select_features(df):
-    """
-    Select relevant features for model training
-    
-    Args:
-        df: Cleaned DataFrame
+        self.logger.info(f"Loading data from: {config.RAW_DATA_PATH}")
         
-    Returns:
-        DataFrame with selected features
-    """
-    print("\nSelecting features...")
+        try:
+            df = self.spark.read.csv(
+                config.RAW_DATA_PATH,
+                header=True,
+                inferSchema=True,
+                escape='"',
+                multiLine=True
+            )
+            
+            initial_count = df.count()
+            self.logger.info(f"Loaded {initial_count:,} records")
+            self.logger.info(f"Columns: {', '.join(df.columns)}")
+            return df
+            
+        except Exception as e:
+            self.logger.error(f"Error loading data: {e}")
+            raise
     
-    # Define available features based on what exists in the dataframe
-    available_features = []
-    
-    feature_mapping = {
-        "DEW": "DEW",
-        "SLP": "SLP",
-        "WND_speed": "WND",
-        "WND_direction": "WND",
-        "VIS": "VIS",
-        "AA1_depth": "AA1"
-    }
-    
-    for feature, original in feature_mapping.items():
-        if feature in df.columns:
-            available_features.append(feature)
-    
-    # Always include the target
-    selected_columns = ["TMP"] + available_features
-    
-    # Filter to only include rows with no missing values in selected columns
-    df_selected = df.select(selected_columns)
-    df_selected = df_selected.dropna()
-    
-    print(f"Selected features: {available_features}")
-    print(f"Data after feature selection: {df_selected.count()} rows")
-    
-    return df_selected, available_features
-
-
-def prepare_features(df, feature_columns):
-    """
-    Prepare features for machine learning
-    - Assemble feature vectors
-    - Standardize features
-    
-    Args:
-        df: DataFrame with selected features
-        feature_columns: List of feature column names
+    def _download_and_extract_data(self):
+        """
+        Download and extract weather data from DATASET_URL.
+        Downloads the tar.gz file and extracts the CSV.
+        """
+        self.logger.info(f"Downloading data from {config.DATASET_URL}...")
         
-    Returns:
-        DataFrame with assembled and scaled features
-    """
-    print("\nPreparing features for ML...")
+        try:
+            # Download the tar.gz file
+            tar_path = config.RAW_DATA_PATH.replace('.csv', '.tar.gz')
+            
+            response = requests.get(config.DATASET_URL, stream=True)
+            response.raise_for_status()
+            
+            # Get total file size for progress tracking
+            total_size = int(response.headers.get('content-length', 0))
+            block_size = 8192
+            downloaded_size = 0
+            
+            self.logger.info(f"Downloading to {tar_path}...")
+            with open(tar_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=block_size):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        if total_size > 0:
+                            progress = (downloaded_size / total_size) * 100
+                            if downloaded_size % (block_size * 1000) == 0:  # Log every ~8MB
+                                self.logger.info(f"Download progress: {progress:.1f}%")
+            
+            self.logger.info(f"Download complete. Extracting archive...")
+            
+            # Extract the tar.gz file
+            with tarfile.open(tar_path, 'r:gz') as tar:
+                # Find the CSV file in the archive
+                csv_members = [m for m in tar.getmembers() if m.name.endswith('.csv')]
+                
+                if not csv_members:
+                    raise ValueError("No CSV file found in the archive")
+                
+                # Extract the first CSV file
+                csv_member = csv_members[0]
+                self.logger.info(f"Extracting {csv_member.name}...")
+                
+                tar.extract(csv_member, path=os.path.dirname(config.RAW_DATA_PATH))
+                
+                # Rename extracted file to expected name if different
+                extracted_path = os.path.join(os.path.dirname(config.RAW_DATA_PATH), csv_member.name)
+                if extracted_path != config.RAW_DATA_PATH:
+                    os.rename(extracted_path, config.RAW_DATA_PATH)
+            
+            # Clean up the tar.gz file
+            os.remove(tar_path)
+            
+            self.logger.info(f"Data successfully downloaded and extracted to {config.RAW_DATA_PATH}")
+            
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error downloading data: {e}")
+            raise
+        except tarfile.TarError as e:
+            self.logger.error(f"Error extracting archive: {e}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error during download/extraction: {e}")
+            raise
     
-    # Assemble features into a vector
-    assembler = VectorAssembler(
-        inputCols=feature_columns,
-        outputCol="features_raw"
-    )
-    df = assembler.transform(df)
-    
-    # Standardize features
-    scaler = StandardScaler(
-        inputCol="features_raw",
-        outputCol="features",
-        withStd=True,
-        withMean=True
-    )
-    
-    scaler_model = scaler.fit(df)
-    df = scaler_model.transform(df)
-    
-    # Select only necessary columns
-    df = df.select("TMP", "features")
-    
-    print(f"Features prepared. Final dataset: {df.count()} rows")
-    
-    return df, scaler_model
-
-
-def split_data(df, train_ratio=0.7, seed=42):
-    """
-    Split data into training and test sets
-    
-    Args:
-        df: Input DataFrame
-        train_ratio: Proportion of data for training
-        seed: Random seed for reproducibility
+    def parse_weather_columns(self, df):
+        """
+        Parse complex weather data columns into numeric features.
         
-    Returns:
-        Tuple of (train_df, test_df)
-    """
-    print(f"\nSplitting data: {train_ratio*100}% train, {(1-train_ratio)*100}% test")
-    
-    train_df, test_df = df.randomSplit([train_ratio, 1-train_ratio], seed=seed)
-    
-    print(f"Training set: {train_df.count()} rows")
-    print(f"Test set: {test_df.count()} rows")
-    
-    return train_df, test_df
-
-
-def preprocess_pipeline(spark, data_path):
-    """
-    Complete preprocessing pipeline
-    
-    Args:
-        spark: SparkSession object
-        data_path: Path to raw data
+        Args:
+            df (DataFrame): Raw data DataFrame
+            
+        Returns:
+            DataFrame: DataFrame with parsed columns
+        """
+        self.logger.info("Parsing weather data columns...")
         
-    Returns:
-        Tuple of (train_df, test_df, feature_columns, scaler_model)
-    """
-    # Load data
-    df = load_data(spark, data_path)
-    
-    # Clean data
-    df = clean_data(df)
-    
-    # Select features
-    df, feature_columns = select_features(df)
-    
-    # Prepare features
-    df, scaler_model = prepare_features(df, feature_columns)
-    
-    # Split data
-    train_df, test_df = split_data(
-        df,
-        train_ratio=config.TRAIN_TEST_SPLIT,
-        seed=config.RANDOM_SEED
-    )
-    
-    return train_df, test_df, feature_columns, scaler_model
-
-
-if __name__ == "__main__":
-    # Test preprocessing
-    spark = create_spark_session()
-    
-    # You need to specify the correct path to your data
-    data_path = "data/2024/*.csv"  # Adjust based on your data location
-    
-    try:
-        train_df, test_df, feature_columns, scaler = preprocess_pipeline(spark, data_path)
-        print("\n" + "="*50)
-        print("Preprocessing completed successfully!")
-        print("="*50)
+        # Register UDFs for parsing
+        parse_temp_udf = udf(parse_temperature_data, FloatType())
+        parse_dew_udf = udf(parse_dew_point_data, FloatType())
+        parse_slp_udf = udf(parse_sea_level_pressure, FloatType())
+        parse_ceiling_udf = udf(parse_ceiling_data, FloatType())
+        parse_vis_udf = udf(parse_visibility_data, FloatType())
         
-        # Show sample data
-        print("\nSample training data:")
-        train_df.show(5)
+        # UDF for parsing wind data (returns tuple, need to extract separately)
+        def parse_wind_direction(wnd_str):
+            direction, _ = parse_wind_data(wnd_str)
+            return direction
         
-    except Exception as e:
-        print(f"Error during preprocessing: {e}")
-    finally:
-        spark.stop()
+        def parse_wind_speed(wnd_str):
+            _, speed = parse_wind_data(wnd_str)
+            return speed
+        
+        parse_wnd_dir_udf = udf(parse_wind_direction, FloatType())
+        parse_wnd_speed_udf = udf(parse_wind_speed, FloatType())
+        
+        # Parse columns
+        df = df.withColumn("TMP_VALUE", parse_temp_udf(col("TMP")))
+        df = df.withColumn("DEW_POINT", parse_dew_udf(col("DEW")))
+        df = df.withColumn("SLP_PRESSURE", parse_slp_udf(col("SLP")))
+        df = df.withColumn("WND_DIRECTION", parse_wnd_dir_udf(col("WND")))
+        df = df.withColumn("WND_SPEED", parse_wnd_speed_udf(col("WND")))
+        df = df.withColumn("CIG_HEIGHT", parse_ceiling_udf(col("CIG")))
+        df = df.withColumn("VIS_DISTANCE", parse_vis_udf(col("VIS")))
+        
+        # Extract datetime features
+        df = df.withColumn("HOUR", hour(to_timestamp(col("DATE"))))
+        df = df.withColumn("MONTH", month(to_timestamp(col("DATE"))))
+        df = df.withColumn("DAY_OF_YEAR", dayofyear(to_timestamp(col("DATE"))))
+        
+        self.logger.info("Weather columns parsed successfully")
+        
+        return df
+    
+    def handle_missing_values(self, df):
+        """
+        Handle missing and invalid values.
+        
+        Args:
+            df (DataFrame): DataFrame with parsed columns
+            
+        Returns:
+            DataFrame: Cleaned DataFrame
+        """
+        self.logger.info("Handling missing values...")
+        
+        initial_count = df.count()
+        
+        # Drop rows where target variable is missing
+        df = df.filter(col("TMP_VALUE").isNotNull())
+        
+        # Apply temperature range filter
+        df = df.filter(
+            (col("TMP_VALUE") >= config.TEMP_MIN) &
+            (col("TMP_VALUE") <= config.TEMP_MAX)
+        )
+        
+        after_target_count = df.count()
+        self.logger.info(f"Removed {initial_count - after_target_count:,} rows with invalid target values")
+        
+        # Calculate missing percentage for each row
+        feature_cols = [
+            "LATITUDE", "LONGITUDE", "ELEVATION",
+            "WND_DIRECTION", "WND_SPEED", "CIG_HEIGHT",
+            "VIS_DISTANCE", "DEW_POINT", "SLP_PRESSURE",
+            "HOUR", "MONTH", "DAY_OF_YEAR"
+        ]
+        
+        # Drop rows with too many missing features
+        for col_name in feature_cols:
+            if col_name in df.columns:
+                # Count nulls before
+                null_count_before = df.filter(col(col_name).isNull()).count()
+                
+                # For continuous features, fill with median or mean
+                if config.FILL_STRATEGY == "median":
+                    # Get median (approximate using percentile)
+                    median_val = df.approxQuantile(col_name, [0.5], 0.01)
+                    if median_val and median_val[0] is not None:
+                        df = df.fillna({col_name: median_val[0]})
+                elif config.FILL_STRATEGY == "mean":
+                    mean_val = df.select(col(col_name)).agg({col_name: "mean"}).collect()[0][0]
+                    if mean_val is not None:
+                        df = df.fillna({col_name: mean_val})
+                else:
+                    df = df.fillna({col_name: 0.0})
+                
+                null_count_after = df.filter(col(col_name).isNull()).count()
+                self.logger.info(
+                    f"Column {col_name}: filled {null_count_before - null_count_after:,} missing values"
+                )
+        
+        final_count = df.count()
+        self.logger.info(f"Final dataset size: {final_count:,} rows")
+        
+        return df
+    
+    def remove_outliers(self, df):
+        """
+        Remove statistical outliers using IQR method for key features.
+        
+        Args:
+            df (DataFrame): DataFrame
+            
+        Returns:
+            DataFrame: DataFrame without outliers
+        """
+        self.logger.info("Removing outliers...")
+        
+        initial_count = df.count()
+        
+        # For each numeric feature, calculate IQR and remove outliers
+        numeric_features = ["DEW_POINT", "SLP_PRESSURE", "WND_SPEED", "VIS_DISTANCE"]
+        
+        for feature in numeric_features:
+            if feature in df.columns:
+                # Calculate Q1, Q3, and IQR
+                quantiles = df.approxQuantile(feature, [0.25, 0.75], 0.01)
+                if len(quantiles) == 2 and quantiles[0] is not None and quantiles[1] is not None:
+                    q1, q3 = quantiles
+                    iqr = q3 - q1
+                    lower_bound = q1 - 1.5 * iqr
+                    upper_bound = q3 + 1.5 * iqr
+                    
+                    # Filter outliers
+                    df = df.filter(
+                        (col(feature) >= lower_bound) & (col(feature) <= upper_bound)
+                    )
+        
+        final_count = df.count()
+        removed = initial_count - final_count
+        self.logger.info(f"Removed {removed:,} outlier rows ({removed/initial_count*100:.2f}%)")
+        
+        return df
+    
+    def encode_categorical_features(self, df):
+        """
+        Encode categorical features (e.g., STATION).
+        
+        Args:
+            df (DataFrame): DataFrame
+            
+        Returns:
+            DataFrame: DataFrame with encoded categorical features
+        """
+        self.logger.info("Encoding categorical features...")
+        
+        # Encode STATION as numeric index
+        if "STATION" in df.columns:
+            indexer = StringIndexer(inputCol="STATION", outputCol="STATION_INDEX")
+            df = indexer.fit(df).transform(df)
+            self.logger.info("Encoded STATION column")
+        
+        return df
+    
+    def create_feature_vector(self, df):
+        """
+        Assemble features into a single vector column.
+        
+        Args:
+            df (DataFrame): DataFrame with individual feature columns
+            
+        Returns:
+            DataFrame: DataFrame with 'features' vector column
+        """
+        self.logger.info("Creating feature vector...")
+        
+        # Define feature columns
+        self.feature_columns = [
+            "LATITUDE", "LONGITUDE", "ELEVATION",
+            "WND_DIRECTION", "WND_SPEED",
+            "CIG_HEIGHT", "VIS_DISTANCE",
+            "DEW_POINT", "SLP_PRESSURE",
+            "STATION_INDEX",
+            "HOUR", "MONTH", "DAY_OF_YEAR"
+        ]
+        
+        # Filter only existing columns
+        available_features = [col_name for col_name in self.feature_columns if col_name in df.columns]
+        
+        self.logger.info(f"Using {len(available_features)} features: {', '.join(available_features)}")
+        
+        # Assemble features
+        assembler = VectorAssembler(
+            inputCols=available_features,
+            outputCol="features_raw"
+        )
+        
+        df = assembler.transform(df)
+        
+        return df, available_features
+    
+    def standardize_features(self, df):
+        """
+        Standardize features using StandardScaler.
+        
+        Args:
+            df (DataFrame): DataFrame with 'features_raw' column
+            
+        Returns:
+            DataFrame: DataFrame with standardized 'features' column
+        """
+        if not config.STANDARDIZE_FEATURES:
+            self.logger.info("Skipping feature standardization (disabled in config)")
+            df = df.withColumnRenamed("features_raw", "features")
+            return df
+        
+        self.logger.info("Standardizing features...")
+        
+        scaler = StandardScaler(
+            inputCol="features_raw",
+            outputCol="features",
+            withStd=True,
+            withMean=True
+        )
+        
+        self.scaler_model = scaler.fit(df)
+        df = self.scaler_model.transform(df)
+        
+        self.logger.info("Features standardized successfully")
+        
+        return df
+    
+    def prepare_dataset(self, df):
+        """
+        Complete preprocessing pipeline: parse, clean, encode, and assemble features.
+        
+        Args:
+            df (DataFrame): Raw data DataFrame
+            
+        Returns:
+            DataFrame: Preprocessed DataFrame ready for modeling
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("STARTING DATA PREPROCESSING")
+        self.logger.info("=" * 60)
+        
+        # Step 1: Parse weather columns
+        df = self.parse_weather_columns(df)
+        
+        # Step 2: Handle missing values
+        df = self.handle_missing_values(df)
+        
+        # Step 3: Remove outliers
+        df = self.remove_outliers(df)
+        
+        # Step 4: Encode categorical features
+        df = self.encode_categorical_features(df)
+        
+        # Step 5: Create feature vector
+        df, feature_names = self.create_feature_vector(df)
+        
+        # Step 6: Standardize features
+        df = self.standardize_features(df)
+        
+        # Step 7: Select final columns
+        df = df.select(
+            "features",
+            col("TMP_VALUE").alias("label"),
+            *feature_names
+        )
+        
+        # Cache the result for efficiency
+        df = df.cache()
+        
+        final_count = df.count()
+        self.logger.info("=" * 60)
+        self.logger.info(f"PREPROCESSING COMPLETE: {final_count:,} records")
+        self.logger.info("=" * 60)
+        
+        return df
+    
+    def split_data(self, df, train_ratio=None):
+        """
+        Split data into training and testing sets.
+        
+        Args:
+            df (DataFrame): Preprocessed DataFrame
+            train_ratio (float): Training set ratio (default from config)
+            
+        Returns:
+            tuple: (train_df, test_df)
+        """
+        if train_ratio is None:
+            train_ratio = config.TRAIN_TEST_SPLIT_RATIO
+        
+        self.logger.info(f"Splitting data: {train_ratio*100:.0f}% train, {(1-train_ratio)*100:.0f}% test")
+        
+        train_df, test_df = df.randomSplit(
+            [train_ratio, 1 - train_ratio],
+            seed=config.RANDOM_SEED
+        )
+        
+        train_count = train_df.count()
+        test_count = test_df.count()
+        
+        self.logger.info(f"Training set: {train_count:,} records")
+        self.logger.info(f"Test set: {test_count:,} records")
+        
+        return train_df, test_df

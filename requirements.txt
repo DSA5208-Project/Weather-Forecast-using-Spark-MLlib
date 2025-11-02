@@ -1,6 +1,24 @@
-pyspark>=3.4.0
-pandas>=2.0.0
-numpy>=1.24.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-scikit-learn>=1.3.0
+# Weather Forecast using Spark MLlib
+# Python Dependencies
+
+# Core ML Libraries
+pyspark==3.5.0
+
+# Data Processing
+pandas==2.1.3
+numpy==1.26.2
+
+# Visualization
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# Additional utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Optional: For Jupyter notebook support (if needed)
+jupyter==1.0.0
+notebook==7.0.6
+
+# Optional: For data download and extraction
+requests==2.31.0

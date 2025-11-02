@@ -1,295 +1,372 @@
 """
-Model training module for weather forecast project
-Implements multiple ML models with hyperparameter tuning
+Model Training Module
+Implements multiple regression models with cross-validation for hyperparameter tuning.
 """
 
-from pyspark.ml.regression import LinearRegression, RandomForestRegressor, GBTRegressor
-from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
-from pyspark.ml.evaluation import RegressionEvaluator
-import config
+import logging
 import time
-from datetime import datetime
+from pyspark.ml.regression import (
+    LinearRegression, RandomForestRegressor,
+    GBTRegressor, GeneralizedLinearRegression
+)
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml import Pipeline
+
+import src.config as config
 
 
-def train_linear_regression(train_df, cv_folds=5):
+class ModelTrainer:
     """
-    Train Linear Regression model with cross-validation
+    Trains and tunes multiple regression models for temperature prediction.
+    """
     
-    Args:
-        train_df: Training DataFrame
-        cv_folds: Number of cross-validation folds
+    def __init__(self, spark):
+        """
+        Initialize model trainer.
         
-    Returns:
-        Tuple of (best_model, cv_model, training_time)
-    """
-    print("\n" + "="*60)
-    print("Training Linear Regression Model")
-    print("="*60)
-    
-    start_time = time.time()
-    
-    # Initialize model
-    lr = LinearRegression(
-        featuresCol="features",
-        labelCol="TMP",
-        predictionCol="prediction"
-    )
-    
-    # Create parameter grid
-    param_grid = ParamGridBuilder()
-    
-    for max_iter in config.LINEAR_REGRESSION_PARAMS["maxIter"]:
-        param_grid = param_grid.addGrid(lr.maxIter, [max_iter])
-    
-    for reg_param in config.LINEAR_REGRESSION_PARAMS["regParam"]:
-        param_grid = param_grid.addGrid(lr.regParam, [reg_param])
-    
-    for elastic_net in config.LINEAR_REGRESSION_PARAMS["elasticNetParam"]:
-        param_grid = param_grid.addGrid(lr.elasticNetParam, [elastic_net])
-    
-    param_grid = param_grid.build()
-    
-    print(f"Testing {len(param_grid)} parameter combinations")
-    
-    # Create evaluator
-    evaluator = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="rmse"
-    )
-    
-    # Create cross-validator
-    cv = CrossValidator(
-        estimator=lr,
-        estimatorParamMaps=param_grid,
-        evaluator=evaluator,
-        numFolds=cv_folds,
-        seed=config.RANDOM_SEED
-    )
-    
-    # Train model
-    print("Starting cross-validation...")
-    cv_model = cv.fit(train_df)
-    
-    training_time = time.time() - start_time
-    
-    # Get best model
-    best_model = cv_model.bestModel
-    
-    print(f"\nTraining completed in {training_time:.2f} seconds")
-    print("\nBest model parameters:")
-    print(f"  Max iterations: {best_model.getMaxIter()}")
-    print(f"  Regularization: {best_model.getRegParam()}")
-    print(f"  Elastic Net: {best_model.getElasticNetParam()}")
-    
-    return best_model, cv_model, training_time
-
-
-def train_random_forest(train_df, cv_folds=5):
-    """
-    Train Random Forest model with cross-validation
-    
-    Args:
-        train_df: Training DataFrame
-        cv_folds: Number of cross-validation folds
+        Args:
+            spark (SparkSession): Active Spark session
+        """
+        self.spark = spark
+        self.logger = logging.getLogger(__name__)
+        self.models = {}
+        self.best_model = None
+        self.best_model_name = None
+        self.training_results = {}
         
-    Returns:
-        Tuple of (best_model, cv_model, training_time)
-    """
-    print("\n" + "="*60)
-    print("Training Random Forest Model")
-    print("="*60)
-    
-    start_time = time.time()
-    
-    # Initialize model
-    rf = RandomForestRegressor(
-        featuresCol="features",
-        labelCol="TMP",
-        predictionCol="prediction",
-        seed=config.RANDOM_SEED
-    )
-    
-    # Create parameter grid
-    param_grid = ParamGridBuilder()
-    
-    for num_trees in config.RANDOM_FOREST_PARAMS["numTrees"]:
-        param_grid = param_grid.addGrid(rf.numTrees, [num_trees])
-    
-    for max_depth in config.RANDOM_FOREST_PARAMS["maxDepth"]:
-        param_grid = param_grid.addGrid(rf.maxDepth, [max_depth])
-    
-    for min_instances in config.RANDOM_FOREST_PARAMS["minInstancesPerNode"]:
-        param_grid = param_grid.addGrid(rf.minInstancesPerNode, [min_instances])
-    
-    param_grid = param_grid.build()
-    
-    print(f"Testing {len(param_grid)} parameter combinations")
-    
-    # Create evaluator
-    evaluator = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="rmse"
-    )
-    
-    # Create cross-validator
-    cv = CrossValidator(
-        estimator=rf,
-        estimatorParamMaps=param_grid,
-        evaluator=evaluator,
-        numFolds=cv_folds,
-        seed=config.RANDOM_SEED
-    )
-    
-    # Train model
-    print("Starting cross-validation...")
-    cv_model = cv.fit(train_df)
-    
-    training_time = time.time() - start_time
-    
-    # Get best model
-    best_model = cv_model.bestModel
-    
-    print(f"\nTraining completed in {training_time:.2f} seconds")
-    print("\nBest model parameters:")
-    print(f"  Number of trees: {best_model.getNumTrees}")
-    print(f"  Max depth: {best_model.getMaxDepth()}")
-    print(f"  Min instances per node: {best_model.getMinInstancesPerNode()}")
-    
-    return best_model, cv_model, training_time
-
-
-def train_gradient_boosted_trees(train_df, cv_folds=5):
-    """
-    Train Gradient Boosted Trees model with cross-validation
-    
-    Args:
-        train_df: Training DataFrame
-        cv_folds: Number of cross-validation folds
+    def create_model(self, model_name):
+        """
+        Create a regression model instance.
         
-    Returns:
-        Tuple of (best_model, cv_model, training_time)
-    """
-    print("\n" + "="*60)
-    print("Training Gradient Boosted Trees Model")
-    print("="*60)
-    
-    start_time = time.time()
-    
-    # Initialize model
-    gbt = GBTRegressor(
-        featuresCol="features",
-        labelCol="TMP",
-        predictionCol="prediction",
-        seed=config.RANDOM_SEED
-    )
-    
-    # Create parameter grid (smaller for GBT as it's computationally expensive)
-    param_grid = ParamGridBuilder() \
-        .addGrid(gbt.maxDepth, [5, 10]) \
-        .addGrid(gbt.maxIter, [10, 20]) \
-        .addGrid(gbt.stepSize, [0.1, 0.2]) \
-        .build()
-    
-    print(f"Testing {len(param_grid)} parameter combinations")
-    
-    # Create evaluator
-    evaluator = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="rmse"
-    )
-    
-    # Create cross-validator
-    cv = CrossValidator(
-        estimator=gbt,
-        estimatorParamMaps=param_grid,
-        evaluator=evaluator,
-        numFolds=cv_folds,
-        seed=config.RANDOM_SEED
-    )
-    
-    # Train model
-    print("Starting cross-validation...")
-    cv_model = cv.fit(train_df)
-    
-    training_time = time.time() - start_time
-    
-    # Get best model
-    best_model = cv_model.bestModel
-    
-    print(f"\nTraining completed in {training_time:.2f} seconds")
-    print("\nBest model parameters:")
-    print(f"  Max depth: {best_model.getMaxDepth()}")
-    print(f"  Max iterations: {best_model.getMaxIter()}")
-    print(f"  Step size: {best_model.getStepSize()}")
-    
-    return best_model, cv_model, training_time
-
-
-def save_model(model, model_name, output_dir):
-    """
-    Save trained model to disk
-    
-    Args:
-        model: Trained model to save
-        model_name: Name for the saved model
-        output_dir: Directory to save the model
-    """
-    import os
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    model_path = os.path.join(output_dir, model_name)
-    
-    try:
-        model.write().overwrite().save(model_path)
-        print(f"\nModel saved to: {model_path}")
-    except Exception as e:
-        print(f"\nError saving model: {e}")
-
-
-def get_cv_metrics(cv_model):
-    """
-    Extract cross-validation metrics
-    
-    Args:
-        cv_model: Fitted CrossValidator model
+        Args:
+            model_name (str): Name of the model
+            
+        Returns:
+            Estimator: Spark ML model instance
+        """
+        self.logger.info(f"Creating model: {model_name}")
         
-    Returns:
-        List of average metrics for each parameter combination
-    """
-    return cv_model.avgMetrics
-
-
-if __name__ == "__main__":
-    # Test model training
-    from data_preprocessing import create_spark_session, preprocess_pipeline
+        if model_name == "LinearRegression":
+            model = LinearRegression(
+                featuresCol="features",
+                labelCol="label",
+                predictionCol="prediction"
+            )
+        
+        elif model_name == "RandomForestRegressor":
+            model = RandomForestRegressor(
+                featuresCol="features",
+                labelCol="label",
+                predictionCol="prediction",
+                seed=config.RANDOM_SEED
+            )
+        
+        elif model_name == "GBTRegressor":
+            model = GBTRegressor(
+                featuresCol="features",
+                labelCol="label",
+                predictionCol="prediction",
+                seed=config.RANDOM_SEED
+            )
+        
+        elif model_name == "GeneralizedLinearRegression":
+            model = GeneralizedLinearRegression(
+                featuresCol="features",
+                labelCol="label",
+                predictionCol="prediction"
+            )
+        
+        else:
+            raise ValueError(f"Unknown model: {model_name}")
+        
+        return model
     
-    spark = create_spark_session()
+    def create_param_grid(self, model, model_name):
+        """
+        Create parameter grid for hyperparameter tuning.
+        
+        Args:
+            model: Spark ML model instance
+            model_name (str): Name of the model
+            
+        Returns:
+            ParamGrid: Parameter grid for cross-validation
+        """
+        self.logger.info(f"Creating parameter grid for {model_name}")
+        
+        builder = ParamGridBuilder()
+        
+        if model_name not in config.HYPERPARAMETERS:
+            self.logger.warning(f"No hyperparameters defined for {model_name}, using defaults")
+            return builder.build()
+        
+        params = config.HYPERPARAMETERS[model_name]
+        
+        # Add parameters to grid
+        if model_name == "LinearRegression":
+            if "regParam" in params:
+                builder.addGrid(model.regParam, params["regParam"])
+            if "elasticNetParam" in params:
+                builder.addGrid(model.elasticNetParam, params["elasticNetParam"])
+        
+        elif model_name == "RandomForestRegressor":
+            if "numTrees" in params:
+                builder.addGrid(model.numTrees, params["numTrees"])
+            if "maxDepth" in params:
+                builder.addGrid(model.maxDepth, params["maxDepth"])
+            if "minInstancesPerNode" in params:
+                builder.addGrid(model.minInstancesPerNode, params["minInstancesPerNode"])
+        
+        elif model_name == "GBTRegressor":
+            if "maxIter" in params:
+                builder.addGrid(model.maxIter, params["maxIter"])
+            if "maxDepth" in params:
+                builder.addGrid(model.maxDepth, params["maxDepth"])
+            if "stepSize" in params:
+                builder.addGrid(model.stepSize, params["stepSize"])
+        
+        elif model_name == "GeneralizedLinearRegression":
+            if "family" in params:
+                builder.addGrid(model.family, params["family"])
+            if "link" in params:
+                builder.addGrid(model.link, params["link"])
+            if "regParam" in params:
+                builder.addGrid(model.regParam, params["regParam"])
+        
+        param_grid = builder.build()
+        self.logger.info(f"Created parameter grid with {len(param_grid)} combinations")
+        
+        return param_grid
     
-    try:
-        # Load and preprocess data
-        data_path = "data/2024/*.csv"
-        train_df, test_df, feature_columns, scaler = preprocess_pipeline(spark, data_path)
+    def train_model_with_cv(self, train_df, model_name):
+        """
+        Train a model with cross-validation for hyperparameter tuning.
         
-        # Train models
-        lr_model, lr_cv, lr_time = train_linear_regression(train_df, cv_folds=config.CV_FOLDS)
-        rf_model, rf_cv, rf_time = train_random_forest(train_df, cv_folds=config.CV_FOLDS)
+        Args:
+            train_df (DataFrame): Training data
+            model_name (str): Name of the model to train
+            
+        Returns:
+            tuple: (best_model, cv_results, training_time)
+        """
+        self.logger.info("=" * 60)
+        self.logger.info(f"TRAINING MODEL: {model_name}")
+        self.logger.info("=" * 60)
         
-        # Save models
-        save_model(lr_model, "linear_regression_model", config.MODEL_DIR)
-        save_model(rf_model, "random_forest_model", config.MODEL_DIR)
+        start_time = time.time()
         
-        print("\n" + "="*60)
-        print("Model training completed successfully!")
-        print("="*60)
+        # Create model
+        model = self.create_model(model_name)
         
-    except Exception as e:
-        print(f"Error during model training: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        spark.stop()
+        # Create parameter grid
+        param_grid = self.create_param_grid(model, model_name)
+        
+        # Create evaluator (using RMSE as primary metric)
+        evaluator = RegressionEvaluator(
+            labelCol="label",
+            predictionCol="prediction",
+            metricName="rmse"
+        )
+        
+        # Create cross-validator
+        cv = CrossValidator(
+            estimator=model,
+            estimatorParamMaps=param_grid,
+            evaluator=evaluator,
+            numFolds=config.NUM_FOLDS,
+            parallelism=config.PARALLELISM,
+            seed=config.RANDOM_SEED
+        )
+        
+        self.logger.info(f"Starting {config.NUM_FOLDS}-fold cross-validation...")
+        self.logger.info(f"Testing {len(param_grid)} parameter combinations")
+        
+        # Fit model
+        cv_model = cv.fit(train_df)
+        
+        training_time = time.time() - start_time
+        
+        # Get best model and metrics
+        best_model = cv_model.bestModel
+        avg_metrics = cv_model.avgMetrics
+        
+        # Log results
+        best_rmse = min(avg_metrics)
+        best_params_idx = avg_metrics.index(best_rmse)
+        
+        self.logger.info(f"Training completed in {training_time:.2f} seconds")
+        self.logger.info(f"Best cross-validation RMSE: {best_rmse:.4f}")
+        self.logger.info(f"Best parameters (combination #{best_params_idx + 1}):")
+        
+        # Extract and log best parameters
+        best_params = param_grid[best_params_idx]
+        for param, value in best_params.items():
+            self.logger.info(f"  {param.name}: {value}")
+        
+        # Store results
+        cv_results = {
+            "model_name": model_name,
+            "best_cv_rmse": best_rmse,
+            "all_cv_rmse": avg_metrics,
+            "best_params": {param.name: value for param, value in best_params.items()},
+            "training_time": training_time,
+            "num_param_combinations": len(param_grid)
+        }
+        
+        self.logger.info("=" * 60)
+        
+        return best_model, cv_results, training_time
+    
+    def train_all_models(self, train_df):
+        """
+        Train all models specified in config.
+        
+        Args:
+            train_df (DataFrame): Training data
+            
+        Returns:
+            dict: Dictionary of trained models and results
+        """
+        self.logger.info("=" * 60)
+        self.logger.info(f"TRAINING {len(config.MODELS_TO_TRAIN)} MODELS")
+        self.logger.info("=" * 60)
+        
+        total_start_time = time.time()
+        
+        for model_name in config.MODELS_TO_TRAIN:
+            try:
+                # Train model with cross-validation
+                best_model, cv_results, training_time = self.train_model_with_cv(
+                    train_df, model_name
+                )
+                
+                # Store model and results
+                self.models[model_name] = best_model
+                self.training_results[model_name] = cv_results
+                
+            except Exception as e:
+                self.logger.error(f"Error training {model_name}: {e}")
+                import traceback
+                self.logger.error(traceback.format_exc())
+        
+        total_time = time.time() - total_start_time
+        
+        self.logger.info("=" * 60)
+        self.logger.info(f"ALL MODELS TRAINED IN {total_time:.2f} SECONDS")
+        self.logger.info("=" * 60)
+        
+        # Select best model based on CV RMSE
+        self.select_best_model()
+        
+        return self.models, self.training_results
+    
+    def select_best_model(self):
+        """
+        Select the best model based on cross-validation RMSE.
+        """
+        if not self.training_results:
+            self.logger.warning("No training results available")
+            return
+        
+        self.logger.info("Selecting best model based on cross-validation RMSE...")
+        
+        best_rmse = float('inf')
+        best_name = None
+        
+        for model_name, results in self.training_results.items():
+            cv_rmse = results["best_cv_rmse"]
+            if cv_rmse < best_rmse:
+                best_rmse = cv_rmse
+                best_name = model_name
+        
+        self.best_model_name = best_name
+        self.best_model = self.models[best_name]
+        
+        self.logger.info("=" * 60)
+        self.logger.info(f"BEST MODEL: {best_name}")
+        self.logger.info(f"Cross-validation RMSE: {best_rmse:.4f}")
+        self.logger.info("=" * 60)
+        
+        return self.best_model, self.best_model_name
+    
+    def save_model(self, model, model_name, path=None):
+        """
+        Save a trained model to disk.
+        
+        Args:
+            model: Trained Spark ML model
+            model_name (str): Name of the model
+            path (str): Save path (default from config)
+        """
+        if path is None:
+            path = f"{config.ALL_MODELS_PATH}/{model_name}"
+        
+        try:
+            model.write().overwrite().save(path)
+            self.logger.info(f"Model saved: {path}")
+        except Exception as e:
+            self.logger.error(f"Error saving model {model_name}: {e}")
+    
+    def save_all_models(self):
+        """
+        Save all trained models.
+        """
+        self.logger.info("Saving all trained models...")
+        
+        for model_name, model in self.models.items():
+            self.save_model(model, model_name)
+        
+        # Save best model to special location
+        if self.best_model is not None:
+            self.save_model(self.best_model, self.best_model_name, config.BEST_MODEL_PATH)
+            self.logger.info(f"Best model ({self.best_model_name}) saved to: {config.BEST_MODEL_PATH}")
+    
+    def get_training_summary(self):
+        """
+        Get a summary of all training results.
+        
+        Returns:
+            dict: Training summary
+        """
+        summary = {
+            "num_models_trained": len(self.models),
+            "best_model": self.best_model_name,
+            "model_results": {}
+        }
+        
+        for model_name, results in self.training_results.items():
+            summary["model_results"][model_name] = {
+                "best_cv_rmse": results["best_cv_rmse"],
+                "training_time": results["training_time"],
+                "best_params": results["best_params"]
+            }
+        
+        return summary
+    
+    def print_training_summary(self):
+        """
+        Print a formatted summary of training results.
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("TRAINING SUMMARY")
+        self.logger.info("=" * 60)
+        
+        # Sort models by CV RMSE
+        sorted_results = sorted(
+            self.training_results.items(),
+            key=lambda x: x[1]["best_cv_rmse"]
+        )
+        
+        self.logger.info(f"{'Model':<30} {'CV RMSE':<12} {'Time (s)':<10}")
+        self.logger.info("-" * 60)
+        
+        for model_name, results in sorted_results:
+            rmse = results["best_cv_rmse"]
+            time_taken = results["training_time"]
+            marker = "(*)" if model_name == self.best_model_name else "   "
+            self.logger.info(f"{model_name:<30} {rmse:<12.4f} {time_taken:<10.2f} {marker}")
+        
+        self.logger.info("-" * 60)
+        self.logger.info("(*) = Best model")
+        self.logger.info("=" * 60)

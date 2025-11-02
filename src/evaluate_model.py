@@ -1,319 +1,449 @@
 """
-Model evaluation module for weather forecast project
-Evaluates trained models and generates performance metrics
+Model Evaluation Module
+Computes metrics, generates visualizations, and creates reports.
 """
 
-from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.sql.functions import col, abs as sql_abs
+import logging
+import os
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-import os
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.sql.functions import col
+
+import src.config as config
 
 
-def evaluate_model(model, test_df, model_name="Model"):
+class ModelEvaluator:
     """
-    Evaluate a trained model on test data
+    Evaluates trained models and generates comprehensive reports.
+    """
     
-    Args:
-        model: Trained model
-        test_df: Test DataFrame
-        model_name: Name of the model for reporting
+    def __init__(self, spark):
+        """
+        Initialize evaluator.
         
-    Returns:
-        Dictionary with evaluation metrics
-    """
-    print(f"\n{'='*60}")
-    print(f"Evaluating {model_name}")
-    print('='*60)
-    
-    # Make predictions
-    predictions = model.transform(test_df)
-    
-    # Calculate various metrics
-    evaluator_rmse = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="rmse"
-    )
-    
-    evaluator_mae = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="mae"
-    )
-    
-    evaluator_r2 = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="r2"
-    )
-    
-    evaluator_mse = RegressionEvaluator(
-        labelCol="TMP",
-        predictionCol="prediction",
-        metricName="mse"
-    )
-    
-    rmse = evaluator_rmse.evaluate(predictions)
-    mae = evaluator_mae.evaluate(predictions)
-    r2 = evaluator_r2.evaluate(predictions)
-    mse = evaluator_mse.evaluate(predictions)
-    
-    metrics = {
-        "model_name": model_name,
-        "rmse": rmse,
-        "mae": mae,
-        "r2": r2,
-        "mse": mse
-    }
-    
-    print(f"\nPerformance Metrics:")
-    print(f"  RMSE: {rmse:.4f}")
-    print(f"  MAE:  {mae:.4f}")
-    print(f"  R²:   {r2:.4f}")
-    print(f"  MSE:  {mse:.4f}")
-    
-    return metrics, predictions
-
-
-def plot_predictions(predictions, model_name, output_dir):
-    """
-    Create visualization of predictions vs actual values
-    
-    Args:
-        predictions: DataFrame with predictions
-        model_name: Name of the model
-        output_dir: Directory to save plots
-    """
-    print(f"\nGenerating plots for {model_name}...")
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Convert to Pandas for plotting (sample if too large)
-    sample_size = min(10000, predictions.count())
-    pred_pd = predictions.select("TMP", "prediction").sample(
-        fraction=sample_size/predictions.count(),
-        seed=42
-    ).toPandas()
-    
-    # Set style
-    sns.set_style("whitegrid")
-    
-    # Create figure with subplots
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    
-    # 1. Scatter plot: Predicted vs Actual
-    ax1 = axes[0, 0]
-    ax1.scatter(pred_pd['TMP'], pred_pd['prediction'], alpha=0.5, s=10)
-    
-    # Add perfect prediction line
-    min_val = min(pred_pd['TMP'].min(), pred_pd['prediction'].min())
-    max_val = max(pred_pd['TMP'].max(), pred_pd['prediction'].max())
-    ax1.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')
-    
-    ax1.set_xlabel('Actual Temperature (°C)', fontsize=12)
-    ax1.set_ylabel('Predicted Temperature (°C)', fontsize=12)
-    ax1.set_title('Predicted vs Actual Temperature', fontsize=14, fontweight='bold')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    
-    # 2. Residual plot
-    ax2 = axes[0, 1]
-    residuals = pred_pd['TMP'] - pred_pd['prediction']
-    ax2.scatter(pred_pd['prediction'], residuals, alpha=0.5, s=10)
-    ax2.axhline(y=0, color='r', linestyle='--', lw=2)
-    ax2.set_xlabel('Predicted Temperature (°C)', fontsize=12)
-    ax2.set_ylabel('Residuals (°C)', fontsize=12)
-    ax2.set_title('Residual Plot', fontsize=14, fontweight='bold')
-    ax2.grid(True, alpha=0.3)
-    
-    # 3. Distribution of residuals
-    ax3 = axes[1, 0]
-    ax3.hist(residuals, bins=50, edgecolor='black', alpha=0.7)
-    ax3.set_xlabel('Residuals (°C)', fontsize=12)
-    ax3.set_ylabel('Frequency', fontsize=12)
-    ax3.set_title('Distribution of Residuals', fontsize=14, fontweight='bold')
-    ax3.axvline(x=0, color='r', linestyle='--', lw=2)
-    ax3.grid(True, alpha=0.3)
-    
-    # 4. Error distribution
-    ax4 = axes[1, 1]
-    errors = np.abs(residuals)
-    ax4.hist(errors, bins=50, edgecolor='black', alpha=0.7, color='orange')
-    ax4.set_xlabel('Absolute Error (°C)', fontsize=12)
-    ax4.set_ylabel('Frequency', fontsize=12)
-    ax4.set_title('Distribution of Absolute Errors', fontsize=14, fontweight='bold')
-    ax4.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    
-    # Save plot
-    plot_path = os.path.join(output_dir, f"{model_name}_predictions.png")
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f"Plot saved to: {plot_path}")
-    plt.close()
-
-
-def plot_cv_results(cv_metrics, param_names, model_name, output_dir):
-    """
-    Plot cross-validation results
-    
-    Args:
-        cv_metrics: List of CV metrics
-        param_names: Names of parameters
-        model_name: Name of the model
-        output_dir: Directory to save plots
-    """
-    print(f"\nGenerating CV plots for {model_name}...")
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(len(cv_metrics)), cv_metrics, marker='o', linewidth=2, markersize=8)
-    plt.xlabel('Parameter Combination', fontsize=12)
-    plt.ylabel('RMSE', fontsize=12)
-    plt.title(f'Cross-Validation Results - {model_name}', fontsize=14, fontweight='bold')
-    plt.grid(True, alpha=0.3)
-    
-    # Highlight best result
-    best_idx = np.argmin(cv_metrics)
-    plt.plot(best_idx, cv_metrics[best_idx], 'r*', markersize=20, label=f'Best (RMSE={cv_metrics[best_idx]:.4f})')
-    plt.legend()
-    
-    plt.tight_layout()
-    
-    plot_path = os.path.join(output_dir, f"{model_name}_cv_results.png")
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f"CV plot saved to: {plot_path}")
-    plt.close()
-
-
-def compare_models(metrics_list, output_dir):
-    """
-    Create comparison visualizations for multiple models
-    
-    Args:
-        metrics_list: List of metric dictionaries
-        output_dir: Directory to save plots
-    """
-    print("\nGenerating model comparison plots...")
-    
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Convert to DataFrame
-    df = pd.DataFrame(metrics_list)
-    
-    # Create comparison plots
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    
-    metrics = ['rmse', 'mae', 'r2', 'mse']
-    titles = ['Root Mean Squared Error', 'Mean Absolute Error', 'R² Score', 'Mean Squared Error']
-    
-    for idx, (metric, title) in enumerate(zip(metrics, titles)):
-        ax = axes[idx // 2, idx % 2]
+        Args:
+            spark (SparkSession): Active Spark session
+        """
+        self.spark = spark
+        self.logger = logging.getLogger(__name__)
+        self.evaluation_results = {}
         
-        bars = ax.bar(df['model_name'], df[metric], color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-        ax.set_ylabel(metric.upper(), fontsize=12)
-        ax.set_title(title, fontsize=14, fontweight='bold')
+        # Set plotting style
+        sns.set_style("whitegrid")
+        plt.rcParams['figure.figsize'] = config.FIGURE_SIZE
+        plt.rcParams['font.size'] = 10
+        
+    def evaluate_model(self, model, test_df, model_name):
+        """
+        Evaluate a model on test data using multiple metrics.
+        
+        Args:
+            model: Trained Spark ML model
+            test_df (DataFrame): Test data
+            model_name (str): Name of the model
+            
+        Returns:
+            dict: Evaluation metrics
+        """
+        self.logger.info(f"Evaluating model: {model_name}")
+        
+        # Make predictions
+        predictions = model.transform(test_df)
+        
+        # Cache predictions for multiple metric calculations
+        predictions.cache()
+        
+        # Calculate metrics
+        metrics = {}
+        
+        for metric_name in config.EVALUATION_METRICS:
+            evaluator = RegressionEvaluator(
+                labelCol="label",
+                predictionCol="prediction",
+                metricName=metric_name
+            )
+            metric_value = evaluator.evaluate(predictions)
+            metrics[metric_name] = metric_value
+            self.logger.info(f"  {metric_name.upper()}: {metric_value:.4f}")
+        
+        # Store results
+        self.evaluation_results[model_name] = metrics
+        
+        return metrics, predictions
+    
+    def evaluate_all_models(self, models, test_df):
+        """
+        Evaluate all models on test data.
+        
+        Args:
+            models (dict): Dictionary of trained models
+            test_df (DataFrame): Test data
+            
+        Returns:
+            dict: Evaluation results for all models
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("EVALUATING ALL MODELS ON TEST SET")
+        self.logger.info("=" * 60)
+        
+        all_predictions = {}
+        
+        for model_name, model in models.items():
+            metrics, predictions = self.evaluate_model(model, test_df, model_name)
+            all_predictions[model_name] = predictions
+        
+        self.logger.info("=" * 60)
+        
+        return self.evaluation_results, all_predictions
+    
+    def compare_models(self):
+        """
+        Compare all models and identify the best one.
+        
+        Returns:
+            tuple: (best_model_name, comparison_df)
+        """
+        if not self.evaluation_results:
+            self.logger.warning("No evaluation results available")
+            return None, None
+        
+        self.logger.info("Comparing model performance...")
+        
+        # Create comparison DataFrame
+        comparison_data = []
+        for model_name, metrics in self.evaluation_results.items():
+            row = {"Model": model_name}
+            row.update(metrics)
+            comparison_data.append(row)
+        
+        comparison_df = pd.DataFrame(comparison_data)
+        
+        # Sort by RMSE (lower is better)
+        comparison_df = comparison_df.sort_values("rmse")
+        
+        # Identify best model
+        best_model_name = comparison_df.iloc[0]["Model"]
+        
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info("MODEL COMPARISON")
+        self.logger.info("=" * 60)
+        self.logger.info("\n" + comparison_df.to_string(index=False))
+        self.logger.info("=" * 60)
+        self.logger.info(f"BEST MODEL: {best_model_name}")
+        self.logger.info("=" * 60)
+        
+        return best_model_name, comparison_df
+    
+    def plot_predictions_vs_actual(self, predictions_df, model_name, output_dir=None):
+        """
+        Create scatter plot of predictions vs actual values.
+        
+        Args:
+            predictions_df (DataFrame): Spark DataFrame with predictions
+            model_name (str): Name of the model
+            output_dir (str): Output directory for plots
+        """
+        if output_dir is None:
+            output_dir = config.OUTPUT_DIR
+        
+        self.logger.info(f"Creating predictions vs actual plot for {model_name}...")
+        
+        # Sample data for plotting (to avoid memory issues)
+        sample_size = min(10000, predictions_df.count())
+        sample_df = predictions_df.sample(False, sample_size / predictions_df.count(), seed=42)
+        
+        # Convert to pandas
+        plot_data = sample_df.select("label", "prediction").toPandas()
+        
+        # Create plot
+        fig, ax = plt.subplots(figsize=config.FIGURE_SIZE)
+        
+        # Scatter plot
+        ax.scatter(plot_data["label"], plot_data["prediction"], 
+                  alpha=0.5, s=10, label="Predictions")
+        
+        # Perfect prediction line
+        min_val = min(plot_data["label"].min(), plot_data["prediction"].min())
+        max_val = max(plot_data["label"].max(), plot_data["prediction"].max())
+        ax.plot([min_val, max_val], [min_val, max_val], 
+               'r--', linewidth=2, label="Perfect Prediction")
+        
+        # Labels and title
+        ax.set_xlabel("Actual Temperature (°C)", fontsize=12)
+        ax.set_ylabel("Predicted Temperature (°C)", fontsize=12)
+        ax.set_title(f"Predictions vs Actual - {model_name}", fontsize=14, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        # Save plot
+        plot_path = os.path.join(output_dir, f"predictions_vs_actual_{model_name}.{config.PLOT_FORMAT}")
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=config.PLOT_DPI, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info(f"Plot saved: {plot_path}")
+    
+    def plot_residuals(self, predictions_df, model_name, output_dir=None):
+        """
+        Create residual plot.
+        
+        Args:
+            predictions_df (DataFrame): Spark DataFrame with predictions
+            model_name (str): Name of the model
+            output_dir (str): Output directory for plots
+        """
+        if output_dir is None:
+            output_dir = config.OUTPUT_DIR
+        
+        self.logger.info(f"Creating residual plot for {model_name}...")
+        
+        # Add residuals column
+        predictions_with_residuals = predictions_df.withColumn(
+            "residual", col("prediction") - col("label")
+        )
+        
+        # Sample data
+        sample_size = min(10000, predictions_with_residuals.count())
+        sample_df = predictions_with_residuals.sample(
+            False, sample_size / predictions_with_residuals.count(), seed=42
+        )
+        
+        # Convert to pandas
+        plot_data = sample_df.select("prediction", "residual").toPandas()
+        
+        # Create plot
+        fig, ax = plt.subplots(figsize=config.FIGURE_SIZE)
+        
+        # Scatter plot
+        ax.scatter(plot_data["prediction"], plot_data["residual"], 
+                  alpha=0.5, s=10)
+        
+        # Zero line
+        ax.axhline(y=0, color='r', linestyle='--', linewidth=2)
+        
+        # Labels and title
+        ax.set_xlabel("Predicted Temperature (°C)", fontsize=12)
+        ax.set_ylabel("Residuals (Predicted - Actual)", fontsize=12)
+        ax.set_title(f"Residual Plot - {model_name}", fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        
+        # Save plot
+        plot_path = os.path.join(output_dir, f"residuals_{model_name}.{config.PLOT_FORMAT}")
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=config.PLOT_DPI, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info(f"Plot saved: {plot_path}")
+    
+    def plot_error_distribution(self, predictions_df, model_name, output_dir=None):
+        """
+        Create histogram of prediction errors.
+        
+        Args:
+            predictions_df (DataFrame): Spark DataFrame with predictions
+            model_name (str): Name of the model
+            output_dir (str): Output directory for plots
+        """
+        if output_dir is None:
+            output_dir = config.OUTPUT_DIR
+        
+        self.logger.info(f"Creating error distribution plot for {model_name}...")
+        
+        # Calculate errors
+        predictions_with_error = predictions_df.withColumn(
+            "error", col("prediction") - col("label")
+        )
+        
+        # Convert to pandas
+        errors = predictions_with_error.select("error").toPandas()["error"]
+        
+        # Create plot
+        fig, ax = plt.subplots(figsize=config.FIGURE_SIZE)
+        
+        # Histogram
+        ax.hist(errors, bins=50, edgecolor='black', alpha=0.7)
+        
+        # Mean line
+        mean_error = errors.mean()
+        ax.axvline(x=mean_error, color='r', linestyle='--', 
+                  linewidth=2, label=f'Mean: {mean_error:.3f}°C')
+        
+        # Labels and title
+        ax.set_xlabel("Prediction Error (°C)", fontsize=12)
+        ax.set_ylabel("Frequency", fontsize=12)
+        ax.set_title(f"Error Distribution - {model_name}", fontsize=14, fontweight='bold')
+        ax.legend()
         ax.grid(True, alpha=0.3, axis='y')
         
-        # Add value labels on bars
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{height:.4f}',
-                   ha='center', va='bottom', fontsize=10)
+        # Save plot
+        plot_path = os.path.join(output_dir, f"error_distribution_{model_name}.{config.PLOT_FORMAT}")
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=config.PLOT_DPI, bbox_inches='tight')
+        plt.close()
         
-        # Rotate x labels if needed
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+        self.logger.info(f"Plot saved: {plot_path}")
     
-    plt.tight_layout()
+    def plot_model_comparison(self, comparison_df, output_dir=None):
+        """
+        Create bar plot comparing all models.
+        
+        Args:
+            comparison_df (DataFrame): Pandas DataFrame with comparison results
+            output_dir (str): Output directory for plots
+        """
+        if output_dir is None:
+            output_dir = config.OUTPUT_DIR
+        
+        self.logger.info("Creating model comparison plot...")
+        
+        # Create subplots for each metric
+        metrics = [m for m in config.EVALUATION_METRICS if m in comparison_df.columns]
+        num_metrics = len(metrics)
+        
+        fig, axes = plt.subplots(1, num_metrics, figsize=(6*num_metrics, 6))
+        
+        if num_metrics == 1:
+            axes = [axes]
+        
+        for idx, metric in enumerate(metrics):
+            ax = axes[idx]
+            
+            # Sort by metric value
+            sorted_df = comparison_df.sort_values(metric)
+            
+            # Create bar plot
+            bars = ax.bar(range(len(sorted_df)), sorted_df[metric])
+            
+            # Color the best model differently
+            bars[0].set_color('green')
+            
+            # Customize plot
+            ax.set_xticks(range(len(sorted_df)))
+            ax.set_xticklabels(sorted_df["Model"], rotation=45, ha='right')
+            ax.set_ylabel(metric.upper(), fontsize=12)
+            ax.set_title(f"Model Comparison - {metric.upper()}", fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3, axis='y')
+            
+            # Add value labels on bars
+            for i, (bar, value) in enumerate(zip(bars, sorted_df[metric])):
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{value:.3f}', ha='center', va='bottom', fontsize=9)
+        
+        # Save plot
+        plot_path = os.path.join(output_dir, f"model_comparison.{config.PLOT_FORMAT}")
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=config.PLOT_DPI, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info(f"Plot saved: {plot_path}")
     
-    plot_path = os.path.join(output_dir, "model_comparison.png")
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f"Comparison plot saved to: {plot_path}")
-    plt.close()
-
-
-def save_metrics_report(metrics_list, output_dir):
-    """
-    Save metrics to a text file
+    def create_all_visualizations(self, all_predictions, comparison_df):
+        """
+        Create all visualizations for all models.
+        
+        Args:
+            all_predictions (dict): Dictionary of predictions for each model
+            comparison_df (DataFrame): Model comparison DataFrame
+        """
+        self.logger.info("=" * 60)
+        self.logger.info("CREATING VISUALIZATIONS")
+        self.logger.info("=" * 60)
+        
+        # Model comparison plot
+        self.plot_model_comparison(comparison_df)
+        
+        # Individual model plots
+        for model_name, predictions_df in all_predictions.items():
+            self.plot_predictions_vs_actual(predictions_df, model_name)
+            self.plot_residuals(predictions_df, model_name)
+            self.plot_error_distribution(predictions_df, model_name)
+        
+        self.logger.info("All visualizations created successfully")
+        self.logger.info("=" * 60)
     
-    Args:
-        metrics_list: List of metric dictionaries
-        output_dir: Directory to save report
-    """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    def save_results(self, comparison_df, output_path=None):
+        """
+        Save evaluation results to CSV.
+        
+        Args:
+            comparison_df (DataFrame): Model comparison DataFrame
+            output_path (str): Output file path
+        """
+        if output_path is None:
+            output_path = config.RESULTS_CSV
+        
+        comparison_df.to_csv(output_path, index=False)
+        self.logger.info(f"Results saved to: {output_path}")
     
-    report_path = os.path.join(output_dir, "metrics_report.txt")
-    
-    with open(report_path, 'w') as f:
-        f.write("="*60 + "\n")
-        f.write("MODEL EVALUATION REPORT\n")
-        f.write("="*60 + "\n\n")
+    def generate_report(self, comparison_df, training_summary, output_path=None):
+        """
+        Generate a comprehensive text report.
         
-        for metrics in metrics_list:
-            f.write(f"\n{metrics['model_name']}\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"RMSE: {metrics['rmse']:.6f}\n")
-            f.write(f"MAE:  {metrics['mae']:.6f}\n")
-            f.write(f"R²:   {metrics['r2']:.6f}\n")
-            f.write(f"MSE:  {metrics['mse']:.6f}\n")
+        Args:
+            comparison_df (DataFrame): Model comparison DataFrame
+            training_summary (dict): Training summary dictionary
+            output_path (str): Output file path
+        """
+        if output_path is None:
+            output_path = config.REPORT_PATH
         
-        # Find best model
-        best_model = min(metrics_list, key=lambda x: x['rmse'])
-        f.write("\n" + "="*60 + "\n")
-        f.write(f"BEST MODEL: {best_model['model_name']}\n")
-        f.write(f"RMSE: {best_model['rmse']:.6f}\n")
-        f.write("="*60 + "\n")
-    
-    print(f"\nMetrics report saved to: {report_path}")
-
-
-if __name__ == "__main__":
-    # Test evaluation
-    from data_preprocessing import create_spark_session, preprocess_pipeline
-    from train_model import train_linear_regression, train_random_forest
-    import config
-    
-    spark = create_spark_session()
-    
-    try:
-        # Load and preprocess data
-        data_path = "data/2024/*.csv"
-        train_df, test_df, feature_columns, scaler = preprocess_pipeline(spark, data_path)
+        self.logger.info("Generating comprehensive report...")
         
-        # Train models
-        lr_model, lr_cv, _ = train_linear_regression(train_df, cv_folds=3)
-        rf_model, rf_cv, _ = train_random_forest(train_df, cv_folds=3)
+        with open(output_path, 'w') as f:
+            f.write("=" * 80 + "\n")
+            f.write("WEATHER FORECAST MODEL TRAINING AND EVALUATION REPORT\n")
+            f.write("=" * 80 + "\n\n")
+            
+            # Dataset info
+            f.write("1. DATASET INFORMATION\n")
+            f.write("-" * 80 + "\n")
+            f.write(f"Source: {config.DATASET_URL}\n")
+            f.write(f"Target Variable: {config.TARGET_COLUMN} (Air Temperature)\n")
+            f.write(f"Train/Test Split: {config.TRAIN_TEST_SPLIT_RATIO*100:.0f}% / "
+                   f"{(1-config.TRAIN_TEST_SPLIT_RATIO)*100:.0f}%\n")
+            f.write(f"Random Seed: {config.RANDOM_SEED}\n\n")
+            
+            # Preprocessing info
+            f.write("2. DATA PREPROCESSING\n")
+            f.write("-" * 80 + "\n")
+            f.write(f"Temperature Range Filter: {config.TEMP_MIN}°C to {config.TEMP_MAX}°C\n")
+            f.write(f"Missing Value Strategy: {config.FILL_STRATEGY}\n")
+            f.write(f"Feature Standardization: {'Enabled' if config.STANDARDIZE_FEATURES else 'Disabled'}\n")
+            f.write(f"Feature Selection Method: {config.FEATURE_SELECTION_METHOD}\n")
+            f.write(f"Feature Selection Parameter: {config.FEATURE_SELECTION_PARAM}\n\n")
+            
+            # Training info
+            f.write("3. MODEL TRAINING\n")
+            f.write("-" * 80 + "\n")
+            f.write(f"Models Trained: {training_summary['num_models_trained']}\n")
+            f.write(f"Cross-Validation Folds: {config.NUM_FOLDS}\n")
+            f.write(f"Best Model: {training_summary['best_model']}\n\n")
+            
+            # Model comparison
+            f.write("4. MODEL COMPARISON (TEST SET PERFORMANCE)\n")
+            f.write("-" * 80 + "\n")
+            f.write(comparison_df.to_string(index=False))
+            f.write("\n\n")
+            
+            # Individual model details
+            f.write("5. DETAILED MODEL RESULTS\n")
+            f.write("-" * 80 + "\n")
+            for model_name, results in training_summary["model_results"].items():
+                f.write(f"\n{model_name}:\n")
+                f.write(f"  Cross-Validation RMSE: {results['best_cv_rmse']:.4f}\n")
+                f.write(f"  Training Time: {results['training_time']:.2f} seconds\n")
+                f.write(f"  Best Parameters:\n")
+                for param, value in results["best_params"].items():
+                    f.write(f"    {param}: {value}\n")
+            
+            f.write("\n" + "=" * 80 + "\n")
+            f.write("END OF REPORT\n")
+            f.write("=" * 80 + "\n")
         
-        # Evaluate models
-        lr_metrics, lr_pred = evaluate_model(lr_model, test_df, "Linear Regression")
-        rf_metrics, rf_pred = evaluate_model(rf_model, test_df, "Random Forest")
-        
-        # Generate visualizations
-        plot_predictions(lr_pred, "Linear_Regression", config.OUTPUT_DIR)
-        plot_predictions(rf_pred, "Random_Forest", config.OUTPUT_DIR)
-        
-        # Compare models
-        compare_models([lr_metrics, rf_metrics], config.OUTPUT_DIR)
-        
-        # Save report
-        save_metrics_report([lr_metrics, rf_metrics], config.OUTPUT_DIR)
-        
-        print("\n" + "="*60)
-        print("Evaluation completed successfully!")
-        print("="*60)
-        
-    except Exception as e:
-        print(f"Error during evaluation: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        spark.stop()
+        self.logger.info(f"Report saved to: {output_path}")

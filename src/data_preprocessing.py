@@ -473,8 +473,8 @@ class WeatherDataPreprocessor:
         
         # Fill categorical features with mode (most frequent value)
         for feature in remaining_categorical:
-            # Get mode (most frequent value)
-            mode_row = df.groupBy(feature).count().orderBy(col("count").desc()).first()
+            # Get mode (most frequent value), excluding nulls
+            mode_row = df.filter(col(feature).isNotNull()).groupBy(feature).count().orderBy(col("count").desc()).first()
             
             if mode_row is not None and mode_row[0] is not None:
                 mode_value = mode_row[0]
@@ -484,6 +484,24 @@ class WeatherDataPreprocessor:
                         when(col(feature).isNull(), mode_value).otherwise(col(feature))
                     )
                     self.logger.info(f"  {feature}: filled {before_count:,} missing values with mode ({mode_value})")
+            else:
+                # If no mode found (all nulls), fill with a default value
+                before_count = df.filter(col(feature).isNull()).count()
+                if before_count > 0:
+                    # Check the data type to determine default value
+                    dtype = dict(df.dtypes).get(feature, "string")
+                    if "int" in dtype.lower() or "long" in dtype.lower() or "double" in dtype.lower():
+                        default_value = -1  # Numeric default
+                        df = df.withColumn(feature,
+                            when(col(feature).isNull(), default_value).otherwise(col(feature))
+                        )
+                        self.logger.info(f"  {feature}: filled {before_count:,} missing values with default ({default_value})")
+                    else:
+                        default_value = "UNKNOWN"  # String default
+                        df = df.withColumn(feature,
+                            when(col(feature).isNull(), default_value).otherwise(col(feature))
+                        )
+                        self.logger.info(f"  {feature}: filled {before_count:,} missing values with default ('{default_value}')")
         
         # Drop any remaining rows with null values in target
         critical_columns = [config.TARGET_COLUMN]  # Target variable must not be null

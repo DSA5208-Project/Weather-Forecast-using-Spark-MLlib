@@ -101,7 +101,7 @@ TRAIN_TEST_SPLIT_RATIO = 0.7
 RANDOM_SEED = 42
 
 # Data cleaning settings
-MAX_MISSING_PERCENT = 0.3  # Drop features with >30% missing values
+MAX_MISSING_PERCENT = 0.5  # Drop features with >50% missing values
 
 # Outlier detection method (IQR)
 IQR_MULTIPLIER = 1.5    # For IQR method
@@ -114,15 +114,6 @@ STANDARDIZE_CONTINUOUS = True  # Standardize continuous features only
 # This uses F-test (ANOVA F-value) for regression
 CONTINUOUS_FEATURE_SELECTION = {
     "featureType": "continuous",
-    "labelType": "continuous",  # For regression tasks
-    "selectionMode": "fpr",     # False Positive Rate
-    "selectionThreshold": 0.05, # Keep features with p-value < 0.05
-}
-
-# UnivariateFeatureSelector parameters for CATEGORICAL features
-# This uses F-test for categorical features with continuous label
-CATEGORICAL_FEATURE_SELECTION = {
-    "featureType": "categorical",
     "labelType": "continuous",  # For regression tasks
     "selectionMode": "fpr",     # False Positive Rate
     "selectionThreshold": 0.05, # Keep features with p-value < 0.05
@@ -141,8 +132,8 @@ SKIP_FEATURE_SELECTION = False
 MODELS_TO_TRAIN = [
     "LinearRegression",
     "RandomForestRegressor",
-    "GBTRegressor",
-    "GeneralizedLinearRegression"
+    # "GBTRegressor",
+    # "GeneralizedLinearRegression"
 ]
 
 # Optionally restrict training to a subset of models.
@@ -156,7 +147,7 @@ PARALLELISM = 4  # Number of parallel folds
 # Hyperparameter grids for each model
 HYPERPARAMETERS = {
     "LinearRegression": {
-        "regParam": [0.0, 0.01, 0.1, 1.0],
+        "regParam": [0.01, 0.1, 1.0],
         "elasticNetParam": [0.0, 0.5, 1.0]
     },
     "RandomForestRegressor": {

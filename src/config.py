@@ -16,6 +16,10 @@ for directory in [MODELS_DIR, OUTPUT_DIR]:
 
 # ==================== DATA CONFIGURATION ====================
 DATASET_URL = "https://www.ncei.noaa.gov/data/global-hourly/archive/csv/2024.tar.gz"
+# Default local dataset used when running the pipeline in development/test
+DEFAULT_DATA_PATH = os.path.join(PROJECT_ROOT, "sample.csv")
+
+# Location of the full NOAA dataset after extraction
 RAW_DATA_PATH = os.path.join(PROJECT_ROOT, "2024.csv")  # After extraction
 
 # Target variable
@@ -140,6 +144,10 @@ MODELS_TO_TRAIN = [
     "GBTRegressor",
     "GeneralizedLinearRegression"
 ]
+
+# Optionally restrict training to a subset of models.
+# When empty, all models listed in ``MODELS_TO_TRAIN`` are used.
+SPECIFIC_MODELS = []
 
 # Cross-validation parameters
 NUM_FOLDS = 5

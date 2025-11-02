@@ -46,26 +46,34 @@ class WeatherDataPreprocessor:
         self.categorical_features = []
         self.all_features = []
         
-    def load_data(self):
+    def load_data(self, file_path=None):
         """
         Load weather data from CSV file. Downloads data from DATASET_URL if not exists.
-        
+
         Args:
-            file_path (str): Path to CSV file. If None, uses config.
-            
+            file_path (str, optional): Path to CSV file. If None, uses config.
+
         Returns:
             DataFrame: Loaded Spark DataFrame
         """
-        # Check if data exists, if not, download it
-        if not os.path.exists(config.RAW_DATA_PATH):
-            self.logger.info(f"Data file not found at {config.RAW_DATA_PATH}")
-            self._download_and_extract_data()
-        
-        self.logger.info(f"Loading data from: {config.RAW_DATA_PATH}")
-        
+        if file_path is None:
+            data_path = config.RAW_DATA_PATH
+        else:
+            data_path = file_path if os.path.isabs(file_path) else os.path.join(config.PROJECT_ROOT, file_path)
+
+        # Check if data exists, if not, download it when using default raw path
+        if not os.path.exists(data_path):
+            if data_path == config.RAW_DATA_PATH:
+                self.logger.info(f"Data file not found at {config.RAW_DATA_PATH}")
+                self._download_and_extract_data()
+            else:
+                raise FileNotFoundError(f"Data file not found at {data_path}")
+
+        self.logger.info(f"Loading data from: {data_path}")
+
         try:
             df = self.spark.read.csv(
-                config.RAW_DATA_PATH,
+                data_path,
                 header=True,
                 inferSchema=True,
                 escape='"',
@@ -347,21 +355,37 @@ class WeatherDataPreprocessor:
         
         total_count = df.count()
         columns_to_drop = []
+        schema = dict(df.dtypes)
+        label_missing_count = 0
         
         # Step 1: Calculate missing percentage for each column and identify columns to drop
         self.logger.info("\nAnalyzing missing values:")
         for column in df.columns:
-            # Count null and NaN values
-            missing_count = df.filter(col(column).isNull() | isnan(col(column))).count()
+            data_type = schema.get(column, "")
+
+            # Count null and NaN values (NaN check only applies to floating point types)
+            condition = col(column).isNull()
+            if data_type.lower() in {"double", "float"}:
+                condition = condition | isnan(col(column))
+
+            missing_count = df.filter(condition).count()
             missing_percent = (missing_count / total_count) * 100
-            
+
             if missing_percent > 0:
                 self.logger.info(f"  {column}: {missing_count:,} missing ({missing_percent:.2f}%)")
-            
+
             # Mark columns with > MAX_MISSING_PERCENT for removal
             if missing_percent > config.MAX_MISSING_PERCENT * 100:
-                columns_to_drop.append(column)
-                self.logger.info(f"    -> Will be DROPPED (exceeds {config.MAX_MISSING_PERCENT*100}% threshold)")
+                if column == "label":
+                    label_missing_count = missing_count
+                    self.logger.info(
+                        "    -> Target column will be retained; rows with missing values will be removed"
+                    )
+                else:
+                    columns_to_drop.append(column)
+                    self.logger.info(
+                        f"    -> Will be DROPPED (exceeds {config.MAX_MISSING_PERCENT*100}% threshold)"
+                    )
         
         # Step 2: Drop columns with too many missing values
         if columns_to_drop:
@@ -371,6 +395,13 @@ class WeatherDataPreprocessor:
             df = df.drop(*columns_to_drop)
         else:
             self.logger.info(f"\nNo columns exceed the {config.MAX_MISSING_PERCENT*100}% missing value threshold")
+
+        # Remove rows with missing target values
+        if label_missing_count > 0:
+            self.logger.info(
+                f"\nDropping {label_missing_count:,} rows with missing target values"
+            )
+            df = df.filter(col("label").isNotNull())
         
         # Step 3: Fill remaining missing values with reasonable strategies
         self.logger.info("\nFilling remaining missing values:")

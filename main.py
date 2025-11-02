@@ -80,9 +80,6 @@ def main():
         # Preprocess data
         processed_df = preprocessor.prepare_dataset(raw_df)
         
-        # Split data
-        train_df, test_df = preprocessor.split_data(processed_df)
-        
         logger.info("Data preprocessing completed\n")
         
         # ============================================================
@@ -93,32 +90,20 @@ def main():
             logger.info("-" * 80)
             
             feature_engineer = FeatureEngineer(spark)
-            
-            # Calculate feature importance
-            feature_scores = feature_engineer.get_feature_importance_scores(
-                train_df,
-                preprocessor.continuous_features,
-                preprocessor.categorical_features
-            )
-            
+
             # Perform univariate feature selection (treats categorical and continuous separately)
-            train_df = feature_engineer.select_features_by_type(
-                train_df,
+            featured_df = feature_engineer.select_features_by_type(
+                processed_df,
                 preprocessor.continuous_features,
                 preprocessor.categorical_features
             )
-            test_df = feature_engineer.select_features_by_type(
-                test_df,
-                preprocessor.continuous_features,
-                preprocessor.categorical_features
-            )
-            
-            # Save feature importance
-            feature_engineer.save_feature_importance()
             
             logger.info("Feature engineering completed\n")
         else:
             logger.info("STEP 3: Skipping feature selection (config.SKIP_FEATURE_SELECTION = True)\n")
+
+        # Split data
+        train_df, test_df = featured_df.randomSplit([config.TRAIN_TEST_SPLIT_RATIO, 1 - config.TRAIN_TEST_SPLIT_RATIO], seed=config.RANDOM_SEED)
         
         # ============================================================
         # STEP 4: Train Models
@@ -136,7 +121,7 @@ def main():
             logger.info(f"Training all configured models: {', '.join(config.MODELS_TO_TRAIN)}")
         
         # Train all models
-        models, training_results = trainer.train_all_models(train_df)
+        models = trainer.train_all_models(train_df)
         
         # Save models
         trainer.save_all_models()
@@ -156,7 +141,7 @@ def main():
         evaluator = ModelEvaluator(spark)
         
         # Evaluate all models on test set
-        evaluation_results, all_predictions = evaluator.evaluate_all_models(
+        all_predictions = evaluator.evaluate_all_models(
             models, test_df
         )
         

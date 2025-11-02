@@ -74,7 +74,7 @@ class ModelEvaluator:
         # Store results
         self.evaluation_results[model_name] = metrics
         
-        return metrics, predictions
+        return predictions
     
     def evaluate_all_models(self, models, test_df):
         """
@@ -94,12 +94,12 @@ class ModelEvaluator:
         all_predictions = {}
         
         for model_name, model in models.items():
-            metrics, predictions = self.evaluate_model(model, test_df, model_name)
+            predictions = self.evaluate_model(model, test_df, model_name)
             all_predictions[model_name] = predictions
         
         self.logger.info("=" * 60)
-        
-        return self.evaluation_results, all_predictions
+
+        return all_predictions
     
     def compare_models(self):
         """

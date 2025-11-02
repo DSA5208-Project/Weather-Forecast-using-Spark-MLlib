@@ -20,7 +20,9 @@ import src.config as config
 from src.utils import (
     parse_temperature_data, parse_dew_point_data, parse_sea_level_pressure,
     parse_wind_data, parse_ceiling_data, parse_visibility_data,
-    extract_datetime_features
+    extract_datetime_features, parse_precipitation_data, parse_sky_cover_layer,
+    parse_atmospheric_pressure, parse_pressure_change, parse_present_weather,
+    parse_wind_gust
 )
 
 
@@ -157,7 +159,8 @@ class WeatherDataPreprocessor:
         """
         self.logger.info("Parsing weather data columns...")
         
-        # Register UDFs for parsing
+        # ==================== PRIMARY OBSERVATIONS ====================
+        # Register UDFs for parsing primary weather observations
         parse_temp_udf = udf(parse_temperature_data, FloatType())
         parse_dew_udf = udf(parse_dew_point_data, FloatType())
         parse_slp_udf = udf(parse_sea_level_pressure, FloatType())
@@ -176,7 +179,7 @@ class WeatherDataPreprocessor:
         parse_wnd_dir_udf = udf(parse_wind_direction, FloatType())
         parse_wnd_speed_udf = udf(parse_wind_speed, FloatType())
         
-        # Parse columns
+        # Parse primary columns
         df = df.withColumn("TMP_VALUE", parse_temp_udf(col("TMP")))
         df = df.withColumn("DEW_POINT", parse_dew_udf(col("DEW")))
         df = df.withColumn("SLP_PRESSURE", parse_slp_udf(col("SLP")))
@@ -185,13 +188,88 @@ class WeatherDataPreprocessor:
         df = df.withColumn("CIG_HEIGHT", parse_ceiling_udf(col("CIG")))
         df = df.withColumn("VIS_DISTANCE", parse_vis_udf(col("VIS")))
         
+        # ==================== PRECIPITATION DATA ====================
+        # Parse precipitation observations (AA1, AA2, AA3)
+        def parse_precip_period(precip_str):
+            period, _, _ = parse_precipitation_data(precip_str)
+            return period
+        
+        def parse_precip_depth(precip_str):
+            _, depth, _ = parse_precipitation_data(precip_str)
+            return depth
+        
+        parse_precip_period_udf = udf(parse_precip_period, FloatType())
+        parse_precip_depth_udf = udf(parse_precip_depth, FloatType())
+        
+        for i in range(1, 4):  # AA1, AA2, AA3
+            col_name = f"AA{i}"
+            if col_name in df.columns:
+                df = df.withColumn(f"AA{i}_PERIOD", parse_precip_period_udf(col(col_name)))
+                df = df.withColumn(f"AA{i}_DEPTH", parse_precip_depth_udf(col(col_name)))
+        
+        # ==================== SKY COVER DATA ====================
+        # Parse sky cover layers (GD1, GD2, GD3, GD4)
+        def parse_sky_coverage(sky_str):
+            coverage, _ = parse_sky_cover_layer(sky_str)
+            return coverage
+        
+        def parse_sky_height(sky_str):
+            _, height = parse_sky_cover_layer(sky_str)
+            return height
+        
+        parse_sky_coverage_udf = udf(parse_sky_coverage, IntegerType())
+        parse_sky_height_udf = udf(parse_sky_height, FloatType())
+        
+        for i in range(1, 5):  # GD1, GD2, GD3, GD4
+            col_name = f"GD{i}"
+            if col_name in df.columns:
+                df = df.withColumn(f"GD{i}_COVERAGE", parse_sky_coverage_udf(col(col_name)))
+                df = df.withColumn(f"GD{i}_HEIGHT", parse_sky_height_udf(col(col_name)))
+        
+        # ==================== ATMOSPHERIC PRESSURE ====================
+        # Parse atmospheric pressure (MA1)
+        parse_atm_press_udf = udf(parse_atmospheric_pressure, FloatType())
+        if "MA1" in df.columns:
+            df = df.withColumn("MA1_PRESSURE", parse_atm_press_udf(col("MA1")))
+        
+        # Parse pressure change (MD1)
+        def parse_press_tendency(change_str):
+            tendency, _ = parse_pressure_change(change_str)
+            return tendency
+        
+        def parse_press_change_3hr(change_str):
+            _, change = parse_pressure_change(change_str)
+            return change
+        
+        parse_press_tendency_udf = udf(parse_press_tendency, IntegerType())
+        parse_press_change_udf = udf(parse_press_change_3hr, FloatType())
+        
+        if "MD1" in df.columns:
+            df = df.withColumn("MD1_TENDENCY", parse_press_tendency_udf(col("MD1")))
+            df = df.withColumn("MD1_CHANGE_3HR", parse_press_change_udf(col("MD1")))
+        
+        # ==================== PRESENT WEATHER ====================
+        # Parse present weather conditions (MW1, MW2, MW3, MW4, MW5)
+        parse_weather_udf = udf(parse_present_weather, IntegerType())
+        
+        for i in range(1, 6):  # MW1 through MW5
+            col_name = f"MW{i}"
+            if col_name in df.columns:
+                df = df.withColumn(f"MW{i}_CONDITION", parse_weather_udf(col(col_name)))
+        
+        # ==================== WIND GUST ====================
+        # Parse wind gust (OC1)
+        parse_gust_udf = udf(parse_wind_gust, FloatType())
+        if "OC1" in df.columns:
+            df = df.withColumn("OC1_GUST_SPEED", parse_gust_udf(col("OC1")))
+        
+        # ==================== DATETIME FEATURES ====================
         # Extract datetime features
         df = df.withColumn("HOUR", hour(to_timestamp(col("DATE"))))
         df = df.withColumn("MONTH", month(to_timestamp(col("DATE"))))
         df = df.withColumn("DAY_OF_YEAR", dayofyear(to_timestamp(col("DATE"))))
         
         self.logger.info("Weather columns parsed successfully")
-        
         return df
     
     def create_derived_categorical_features(self, df):
@@ -297,8 +375,51 @@ class WeatherDataPreprocessor:
         # Step 3: Fill remaining missing values with reasonable strategies
         self.logger.info("\nFilling remaining missing values:")
         
-        # Get list of continuous and categorical features that still exist
-        remaining_continuous = [f for f in config.CONTINUOUS_FEATURES if f in df.columns and f not in columns_to_drop]
+        # Map original feature names to their parsed column names
+        # Note: TMP_VALUE is renamed to "label" after parsing, so we reference it as "label"
+        parsed_continuous_mapping = {
+            "TMP": "label",
+            "DEW": "DEW_POINT",
+            "SLP": "SLP_PRESSURE",
+            "WND": ["WND_DIRECTION", "WND_SPEED"],
+            "CIG": "CIG_HEIGHT",
+            "VIS": "VIS_DISTANCE",
+            "AA1": ["AA1_PERIOD", "AA1_DEPTH"],
+            "AA2": ["AA2_PERIOD", "AA2_DEPTH"],
+            "AA3": ["AA3_PERIOD", "AA3_DEPTH"],
+            "GD1": ["GD1_COVERAGE", "GD1_HEIGHT"],
+            "GD2": ["GD2_COVERAGE", "GD2_HEIGHT"],
+            "GD3": ["GD3_COVERAGE", "GD3_HEIGHT"],
+            "GD4": ["GD4_COVERAGE", "GD4_HEIGHT"],
+            "MA1": "MA1_PRESSURE",
+            "MD1": ["MD1_TENDENCY", "MD1_CHANGE_3HR"],
+            "MW1": "MW1_CONDITION",
+            "MW2": "MW2_CONDITION",
+            "MW3": "MW3_CONDITION",
+            "MW4": "MW4_CONDITION",
+            "MW5": "MW5_CONDITION",
+            "OC1": "OC1_GUST_SPEED",
+            "LATITUDE": "LATITUDE",
+            "LONGITUDE": "LONGITUDE",
+            "ELEVATION": "ELEVATION"
+        }
+        
+        # Build list of parsed continuous features that still exist in the dataframe
+        # Exclude "label" as it's the target variable, not a feature
+        remaining_continuous = []
+        for original_feature in config.CONTINUOUS_FEATURES:
+            if original_feature in parsed_continuous_mapping:
+                parsed_names = parsed_continuous_mapping[original_feature]
+                # Handle both single column and list of columns
+                if isinstance(parsed_names, list):
+                    for parsed_name in parsed_names:
+                        if parsed_name in df.columns and parsed_name not in columns_to_drop and parsed_name != "label":
+                            remaining_continuous.append(parsed_name)
+                else:
+                    if parsed_names in df.columns and parsed_names not in columns_to_drop and parsed_names != "label":
+                        remaining_continuous.append(parsed_names)
+        
+        # Get categorical features that still exist
         remaining_categorical = [f for f in config.CATEGORICAL_FEATURES if f in df.columns and f not in columns_to_drop]
 
         self.continuous_features = remaining_continuous
@@ -551,6 +672,11 @@ class WeatherDataPreprocessor:
         # Parse weather columns
         df = self.parse_weather_columns(df)
         
+        # Rename the target column to "label" for MLlib compatibility
+        if "TMP_VALUE" in df.columns:
+            df = df.withColumnRenamed("TMP_VALUE", "label")
+            self.logger.info("Renamed 'TMP_VALUE' to 'label' for MLlib compatibility")
+        
         # Create derived categorical features
         df = self.create_derived_categorical_features(df)
 
@@ -562,12 +688,6 @@ class WeatherDataPreprocessor:
 
         # Encode categorical features
         df = self.encode_categorical_features(df)
-
-        # Standardize features (continuous features only)
-        df = self.standardize_features(df)
-        
-        # Cache the result for efficiency
-        df = df.cache()
         
         final_count = df.count()
         self.logger.info("=" * 60)
@@ -575,32 +695,3 @@ class WeatherDataPreprocessor:
         self.logger.info("=" * 60)
         
         return df
-    
-    def split_data(self, df, train_ratio=None):
-        """
-        Split data into training and testing sets.
-        
-        Args:
-            df (DataFrame): Preprocessed DataFrame
-            train_ratio (float): Training set ratio (default from config)
-            
-        Returns:
-            tuple: (train_df, test_df)
-        """
-        if train_ratio is None:
-            train_ratio = config.TRAIN_TEST_SPLIT_RATIO
-        
-        self.logger.info(f"Splitting data: {train_ratio*100:.0f}% train, {(1-train_ratio)*100:.0f}% test")
-        
-        train_df, test_df = df.randomSplit(
-            [train_ratio, 1 - train_ratio],
-            seed=config.RANDOM_SEED
-        )
-        
-        train_count = train_df.count()
-        test_count = test_df.count()
-        
-        self.logger.info(f"Training set: {train_count:,} records")
-        self.logger.info(f"Test set: {test_count:,} records")
-        
-        return train_df, test_df

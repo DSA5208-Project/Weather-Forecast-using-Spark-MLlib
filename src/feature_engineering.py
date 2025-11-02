@@ -6,7 +6,7 @@ Uses UnivariateFeatureSelector with proper handling of categorical and continuou
 import logging
 import pandas as pd
 from pyspark.sql import DataFrame
-from pyspark.ml.feature import UnivariateFeatureSelector, VectorAssembler
+from pyspark.ml.feature import UnivariateFeatureSelector, VectorAssembler, StandardScaler
 from pyspark.ml.stat import Correlation
 from pyspark.sql.functions import col
 from pyspark.ml.linalg import Vectors, VectorUDT
@@ -112,10 +112,20 @@ class FeatureEngineer:
         if len(continuous_names) > 0:
             cont_assembler = VectorAssembler(
                 inputCols=continuous_names,
-                outputCol="continuous_features",
+                outputCol="continuous_features_vector",
                 handleInvalid="skip"
             )
             df = cont_assembler.transform(df)
+
+            # Step 2: Standardize only continuous features
+            continuous_scaler = StandardScaler(
+                inputCol="continuous_features_vector",
+                outputCol="continuous_features",
+                withStd=True,
+                withMean=True
+            )
+            self.scaler_model = continuous_scaler.fit(df)
+            df = self.scaler_model.transform(df)
             self.logger.info(f"  Created continuous_features vector: {len(continuous_names)} features")
         
         # Create categorical features vector
@@ -250,80 +260,3 @@ class FeatureEngineer:
         self.logger.info(f"Combined features into final 'features' vector")
         
         return df
-    
-    def get_feature_importance_scores(self, df, continuous_names, categorical_names, label_col="label"):
-        """
-        Calculate feature importance scores using correlation analysis.
-        
-        Args:
-            df (DataFrame): DataFrame with features and label
-            continuous_names (list): List of continuous feature names
-            categorical_names (list): List of categorical feature names
-            label_col (str): Name of label column
-            
-        Returns:
-            dict: Feature importance scores
-        """
-        self.logger.info("Calculating feature importance scores...")
-        
-        feature_scores = {}
-        all_names = continuous_names + categorical_names
-        
-        # Calculate correlation between each feature and target
-        for feature_name in all_names:
-            if feature_name in df.columns:
-                try:
-                    # Calculate Pearson correlation
-                    corr_result = df.stat.corr(feature_name, label_col)
-                    feature_scores[feature_name] = abs(corr_result) if corr_result is not None else 0.0
-                except Exception as e:
-                    self.logger.warning(f"Could not calculate correlation for {feature_name}: {e}")
-                    feature_scores[feature_name] = 0.0
-        
-        # Sort by importance
-        feature_scores = dict(sorted(feature_scores.items(), key=lambda x: x[1], reverse=True))
-        
-        self.logger.info("\nTop 10 features by correlation with target:")
-        for i, (feature, score) in enumerate(list(feature_scores.items())[:10], 1):
-            feature_type = "continuous" if feature in continuous_names else "categorical"
-            self.logger.info(f"  {i}. {feature} ({feature_type}): {score:.4f}")
-        
-        self.feature_scores = feature_scores
-        return feature_scores
-    
-    def save_feature_importance(self, output_path=None):
-        """
-        Save feature importance scores to CSV file.
-        
-        Args:
-            output_path (str): Output file path
-        """
-        if output_path is None:
-            output_path = config.FEATURE_IMPORTANCE_CSV
-        
-        if not self.feature_scores:
-            self.logger.warning("No feature scores available to save")
-            return
-        
-        # Convert to pandas and save
-        df_importance = pd.DataFrame([
-            {
-                "Feature": feature, 
-                "Importance": score,
-                "Type": "continuous" if feature in self.continuous_feature_names else "categorical",
-                "Selected": feature in (self.selected_continuous_features + self.selected_categorical_features)
-            }
-            for feature, score in self.feature_scores.items()
-        ])
-        
-        df_importance.to_csv(output_path, index=False)
-        self.logger.info(f"Feature importance scores saved to: {output_path}")
-    
-    def get_selected_feature_names(self):
-        """
-        Get names of all selected features.
-        
-        Returns:
-            list: List of selected feature names
-        """
-        return self.selected_continuous_features + self.selected_categorical_features

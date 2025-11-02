@@ -19,76 +19,52 @@ DATASET_URL = "https://www.ncei.noaa.gov/data/global-hourly/archive/csv/2024.tar
 RAW_DATA_PATH = os.path.join(PROJECT_ROOT, "2024.csv")  # After extraction
 
 # Target variable
-TARGET_COLUMN = "TMP_VALUE"
+TARGET_COLUMN = "TMP"
 
 # Feature classification
 # Continuous features - numerical values with meaningful ranges
 # These columns contain weather observation data in format: "value,quality_code[,additional_fields]"
 # They will be parsed to extract the numeric value
 CONTINUOUS_FEATURES = [
-    # Geographic features
+    # Geographic features (direct numeric values)
     "LATITUDE",           # Geographic coordinate (-90 to 90)
     "LONGITUDE",          # Geographic coordinate (-180 to 180)
     "ELEVATION",          # Height above sea level in meters
     
-    # Primary weather observations (comma-separated format)
+    # Primary weather observations (comma-separated format - need parsing)
     "TMP",                # Air temperature (scaled by 10, e.g., "+0150,5" = 15.0°C)
     "DEW",                # Dew point temperature (scaled by 10)
     "SLP",                # Sea level pressure (scaled by 10, in hPa)
-    "WND",                # Wind observation (direction,quality,type,speed,quality)
+    "WND",                # Wind observation (direction,quality,type,speed,quality) -> extract direction and speed
     "CIG",                # Ceiling height (in meters)
     "VIS",                # Visibility distance (in meters)
     
-    # Additional weather observations (various formats, mostly comma-separated)
-    # Precipitation
-    "AA1", "AA2", "AA3",  # Liquid precipitation depth
-    "AB1",                # Liquid precipitation monthly depth
-    "AD1",                # Liquid precipitation greatest amount in 24 hours
-    "AE1",                # Liquid precipitation number of days
+    # Precipitation data (AA1, AA2, AA3 fields)
+    "AA1",                # Liquid precipitation occurrence (period, depth in mm, condition)
+    "AA2",                # Liquid precipitation occurrence (second observation)
+    "AA3",                # Liquid precipitation occurrence (third observation)
     
-    # Sky conditions / clouds
-    "AH1", "AH2", "AH3", "AH4", "AH5", "AH6",  # Sky cover layer
-    "AI1", "AI2", "AI3", "AI4", "AI5", "AI6",  # Sky cover summation
-    "AJ1",                # Snow depth
+    # Sky cover/cloud data (GD1, GD2, GD3, GD4 fields)
+    "GD1",                # Sky cover layer 1 (coverage code, base height in meters)
+    "GD2",                # Sky cover layer 2
+    "GD3",                # Sky cover layer 3
+    "GD4",                # Sky cover layer 4
     
-    # Atmospheric pressure
-    "AL1",                # Atmospheric pressure change
-    "AN1",                # Atmospheric pressure observation
+    # Atmospheric pressure (MA1 field)
+    "MA1",                # Atmospheric pressure observation (altimeter, station pressure in hPa)
     
-    # Temperature
-    "AT1", "AT2", "AT3", "AT4", "AT5", "AT6",  # Air temperature
+    # Pressure change/tendency (MD1 field)
+    "MD1",                # Atmospheric pressure change (tendency code, 3hr change in hPa)
     
-    # Solar radiation / sunshine
-    "GA1",                # Sky cover
-    "GD1", "GD2", "GD3", "GD4",  # Sky cover layer
-    "GF1",                # Sky condition observation
+    # Present weather (MW1, MW2, MW3, MW4, MW5 fields)
+    "MW1",                # Present weather observation 1 (condition code)
+    "MW2",                # Present weather observation 2
+    "MW3",                # Present weather observation 3
+    "MW4",                # Present weather observation 4
+    "MW5",                # Present weather observation 5
     
-    # Wind
-    "GJ1",                # Supplementary wind observation
-    "GK1",                # Below station cloud layer
-    "GP1",                # Precipitation
-    "GQ1",                # Precipitation intensity
-    "GR1",                # Precipitation occurrence
-    
-    # Extreme temperatures
-    "KA1", "KA2",         # Extreme air temperature
-    "KB1", "KB2", "KB3",  # Average air temperature
-    "KD1", "KD2",         # Heating/cooling degree days
-    "KE1",                # Extreme wind speed
-    
-    # Weather type observations
-    "MA1",                # Atmospheric pressure tendency
-    "MD1",                # Atmospheric pressure change
-    "MG1",                # Atmospheric pressure observation
-    "MH1",                # Atmospheric pressure quality
-    "MK1",                # Surface temperature
-    
-    # Miscellaneous weather data
-    "MW1", "MW2", "MW3", "MW4", "MW5",  # Present weather observation
-    
-    # Waves / water
-    "OC1",                # Wind wave observation
-    "OE1", "OE2", "OE3",  # Ocean wave measurement
+    # Past weather (OC1 field)
+    "OC1",                # Wind gust observation (speed in m/s)
 ]
 
 # Categorical features - discrete values or codes

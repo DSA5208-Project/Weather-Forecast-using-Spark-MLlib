@@ -259,7 +259,7 @@ class ModelTrainer:
         # Select best model based on CV RMSE
         self.select_best_model()
         
-        return self.models, self.training_results
+        return self.models
     
     def select_best_model(self):
         """

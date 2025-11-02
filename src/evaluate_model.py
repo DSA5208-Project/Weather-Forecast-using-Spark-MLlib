@@ -412,11 +412,38 @@ class ModelEvaluator:
             # Preprocessing info
             f.write("2. DATA PREPROCESSING\n")
             f.write("-" * 80 + "\n")
-            f.write(f"Temperature Range Filter: {config.TEMP_MIN}°C to {config.TEMP_MAX}°C\n")
-            f.write(f"Missing Value Strategy: {config.FILL_STRATEGY}\n")
-            f.write(f"Feature Standardization: {'Enabled' if config.STANDARDIZE_FEATURES else 'Disabled'}\n")
-            f.write(f"Feature Selection Method: {config.FEATURE_SELECTION_METHOD}\n")
-            f.write(f"Feature Selection Parameter: {config.FEATURE_SELECTION_PARAM}\n\n")
+            temp_min = getattr(config, "TEMP_MIN", None)
+            temp_max = getattr(config, "TEMP_MAX", None)
+            if temp_min is not None and temp_max is not None:
+                f.write(f"Temperature Range Filter: {temp_min}°C to {temp_max}°C\n")
+            else:
+                f.write("Temperature Range Filter: Not specified in configuration\n")
+
+            fill_strategy_desc = (
+                f"Drop columns with >{int(config.MAX_MISSING_PERCENT * 100)}% missing, "
+                "mean/mode imputation for remaining values"
+            )
+            f.write(f"Missing Value Strategy: {fill_strategy_desc}\n")
+
+            standardize_flag = getattr(
+                config,
+                "STANDARDIZE_FEATURES",
+                getattr(config, "STANDARDIZE_CONTINUOUS", False),
+            )
+            f.write(f"Feature Standardization: {'Enabled' if standardize_flag else 'Disabled'}\n")
+
+            if getattr(config, "SKIP_FEATURE_SELECTION", False):
+                feature_selection_desc = "Skipped"
+                feature_selection_param = "N/A"
+            else:
+                fs_cfg = getattr(config, "CONTINUOUS_FEATURE_SELECTION", {}) or {}
+                mode = fs_cfg.get("selectionMode", "N/A")
+                threshold = fs_cfg.get("selectionThreshold", "N/A")
+                feature_selection_desc = f"Univariate selector (mode: {mode})"
+                feature_selection_param = f"Threshold: {threshold}"
+
+            f.write(f"Feature Selection Method: {feature_selection_desc}\n")
+            f.write(f"Feature Selection Parameter: {feature_selection_param}\n\n")
             
             # Training info
             f.write("3. MODEL TRAINING\n")

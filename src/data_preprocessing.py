@@ -195,6 +195,8 @@ class WeatherDataPreprocessor:
         df = df.withColumn("WND_SPEED", parse_wnd_speed_udf(col("WND")))
         df = df.withColumn("CIG_HEIGHT", parse_ceiling_udf(col("CIG")))
         df = df.withColumn("VIS_DISTANCE", parse_vis_udf(col("VIS")))
+
+        df.select("TMP_VALUE", "DEW_POINT", "SLP_PRESSURE", "WND_DIRECTION", "WND_SPEED", "CIG_HEIGHT", "VIS_DISTANCE").show(5)
         
         # ==================== PRECIPITATION DATA ====================
         # Parse precipitation observations (AA1, AA2, AA3)

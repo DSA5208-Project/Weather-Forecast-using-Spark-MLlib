@@ -47,9 +47,6 @@ def main():
     Main execution function.
     """
 
-    os.environ['PYSPARK_PYTHON'] = sys.executable
-    os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
-
     # Setup logging
     logger = setup_logging()
     

@@ -1,6 +1,6 @@
 """
 Feature Engineering and Selection Module
-Uses UnivariateFeatureSelector for automated feature selection.
+Uses UnivariateFeatureSelector with proper handling of categorical and continuous features.
 """
 
 import logging
@@ -9,6 +9,8 @@ from pyspark.sql import DataFrame
 from pyspark.ml.feature import UnivariateFeatureSelector, VectorAssembler
 from pyspark.ml.stat import Correlation
 from pyspark.sql.functions import col
+from pyspark.ml.linalg import Vectors, VectorUDT
+from pyspark.sql.types import DoubleType
 
 import src.config as config
 
@@ -16,6 +18,7 @@ import src.config as config
 class FeatureEngineer:
     """
     Handles feature selection using UnivariateFeatureSelector.
+    Treats categorical and continuous features differently based on their types.
     """
     
     def __init__(self, spark):
@@ -27,27 +30,30 @@ class FeatureEngineer:
         """
         self.spark = spark
         self.logger = logging.getLogger(__name__)
-        self.selector_model = None
-        self.selected_features = []
+        self.continuous_selector_model = None
+        self.categorical_selector_model = None
+        self.selected_continuous_features = []
+        self.selected_categorical_features = []
+        self.selected_continuous_indices = []
+        self.selected_categorical_indices = []
         self.feature_scores = {}
+        self.continuous_feature_names = []
+        self.categorical_feature_names = []
         
-    def select_features_univariate(self, df, feature_col="features", label_col="label"):
+    def select_features_by_type(self, df, continuous_feature_names, categorical_feature_names, 
+                                  feature_col="features", label_col="label"):
         """
-        Perform univariate feature selection using statistical tests.
+        Perform univariate feature selection separately for continuous and categorical features.
         
-        UnivariateFeatureSelector supports:
-        - featureType="continuous" for regression (F-test)
-        - featureType="categorical" for classification (chi-squared)
-        
-        Selection modes:
-        - numTopFeatures: Select top K features
-        - percentile: Select top X% of features
-        - fpr: False Positive Rate test
-        - fdr: False Discovery Rate test
-        - fwe: Family-Wise Error rate test
+        UnivariateFeatureSelector in Spark MLlib uses:
+        - F-test (ANOVA) for continuous features with continuous label (regression)
+        - Chi-squared test for categorical features with categorical label (classification)
+        - F-test for categorical features with continuous label (regression)
         
         Args:
             df (DataFrame): DataFrame with features and label
+            continuous_feature_names (list): List of continuous feature names
+            categorical_feature_names (list): List of categorical feature names
             feature_col (str): Name of features column
             label_col (str): Name of label column
             
@@ -55,69 +61,204 @@ class FeatureEngineer:
             DataFrame: DataFrame with selected features
         """
         self.logger.info("=" * 60)
-        self.logger.info("PERFORMING UNIVARIATE FEATURE SELECTION")
+        self.logger.info("PERFORMING TYPE-AWARE UNIVARIATE FEATURE SELECTION")
         self.logger.info("=" * 60)
         
-        # Get original feature count
-        original_feature_count = df.select(feature_col).first()[0].size
-        self.logger.info(f"Original number of features: {original_feature_count}")
+        self.continuous_feature_names = continuous_feature_names
+        self.categorical_feature_names = categorical_feature_names
         
-        # Configure UnivariateFeatureSelector
+        # Total number of features
+        total_features = len(continuous_feature_names) + len(categorical_feature_names)
+        self.logger.info(f"Total features: {total_features}")
+        self.logger.info(f"  - Continuous: {len(continuous_feature_names)}")
+        self.logger.info(f"  - Categorical: {len(categorical_feature_names)}")
+        
+        # Create separate feature vectors for continuous and categorical features
+        df = self._create_separate_feature_vectors(df, continuous_feature_names, categorical_feature_names)
+        
+        # Select continuous features
+        if len(continuous_feature_names) > 0:
+            df = self._select_continuous_features(df)
+        else:
+            self.logger.info("No continuous features to select")
+            self.selected_continuous_indices = []
+        
+        # Select categorical features
+        if len(categorical_feature_names) > 0:
+            df = self._select_categorical_features(df)
+        else:
+            self.logger.info("No categorical features to select")
+            self.selected_categorical_indices = []
+        
+        # Combine selected features
+        df = self._combine_selected_features(df)
+        
+        total_selected = len(self.selected_continuous_indices) + len(self.selected_categorical_indices)
+        self.logger.info("=" * 60)
+        self.logger.info(f"FEATURE SELECTION COMPLETE")
+        self.logger.info(f"Selected {total_selected} out of {total_features} features")
+        self.logger.info(f"  - Continuous: {len(self.selected_continuous_indices)}/{len(continuous_feature_names)}")
+        self.logger.info(f"  - Categorical: {len(self.selected_categorical_indices)}/{len(categorical_feature_names)}")
+        self.logger.info(f"  - Reduction: {(1 - total_selected/total_features)*100:.1f}%")
+        self.logger.info("=" * 60)
+        
+        return df
+    
+    def _create_separate_feature_vectors(self, df, continuous_names, categorical_names):
+        """Create separate feature vectors for continuous and categorical features."""
+        self.logger.info("\nCreating separate feature vectors...")
+        
+        # Create continuous features vector
+        if len(continuous_names) > 0:
+            cont_assembler = VectorAssembler(
+                inputCols=continuous_names,
+                outputCol="continuous_features",
+                handleInvalid="skip"
+            )
+            df = cont_assembler.transform(df)
+            self.logger.info(f"  Created continuous_features vector: {len(continuous_names)} features")
+        
+        # Create categorical features vector
+        if len(categorical_names) > 0:
+            cat_assembler = VectorAssembler(
+                inputCols=categorical_names,
+                outputCol="categorical_features",
+                handleInvalid="skip"
+            )
+            df = cat_assembler.transform(df)
+            self.logger.info(f"  Created categorical_features vector: {len(categorical_names)} features")
+        
+        return df
+    
+    def _select_continuous_features(self, df):
+        """Select continuous features using F-test for regression."""
+        self.logger.info("\n" + "-" * 60)
+        self.logger.info("SELECTING CONTINUOUS FEATURES")
+        self.logger.info("-" * 60)
+        
+        config_params = config.CONTINUOUS_FEATURE_SELECTION
+        
         selector = UnivariateFeatureSelector(
-            featuresCol=feature_col,
-            outputCol="selectedFeatures",
-            labelCol=label_col,
-            featureType="continuous",  # For regression tasks
-            selectionMode=config.FEATURE_SELECTION_METHOD
+            featuresCol="continuous_features",
+            outputCol="selected_continuous_features",
+            labelCol="label",
+            featureType=config_params["featureType"],  # "continuous"
+            labelType=config_params["labelType"],      # "continuous" for regression
+            selectionMode=config_params["selectionMode"]
         )
         
-        # Set selection parameter based on mode
-        if config.FEATURE_SELECTION_METHOD == "numTopFeatures":
-            num_features = min(config.NUM_TOP_FEATURES, original_feature_count)
-            selector.setSelectionThreshold(num_features)
-            self.logger.info(f"Selection mode: numTopFeatures (K={num_features})")
-            
-        elif config.FEATURE_SELECTION_METHOD == "percentile":
-            percentile = config.FEATURE_SELECTION_PARAM
-            selector.setSelectionThreshold(percentile)
-            self.logger.info(f"Selection mode: percentile ({percentile*100}%)")
-            
-        elif config.FEATURE_SELECTION_METHOD in ["fpr", "fdr", "fwe"]:
-            threshold = config.FEATURE_SELECTION_PARAM
-            selector.setSelectionThreshold(threshold)
-            self.logger.info(f"Selection mode: {config.FEATURE_SELECTION_METHOD} (threshold={threshold})")
+        selector.setSelectionThreshold(config_params["selectionThreshold"])
+        
+        self.logger.info(f"Configuration:")
+        self.logger.info(f"  - Feature type: {config_params['featureType']}")
+        self.logger.info(f"  - Label type: {config_params['labelType']}")
+        self.logger.info(f"  - Selection mode: {config_params['selectionMode']}")
+        self.logger.info(f"  - Threshold: {config_params['selectionThreshold']}")
         
         # Fit the selector
-        self.logger.info("Fitting UnivariateFeatureSelector...")
-        self.selector_model = selector.fit(df)
+        self.continuous_selector_model = selector.fit(df)
         
         # Get selected feature indices
-        selected_indices = self.selector_model.selectedFeatures
-        num_selected = len(selected_indices)
+        self.selected_continuous_indices = self.continuous_selector_model.selectedFeatures
+        num_selected = len(self.selected_continuous_indices)
         
-        self.logger.info(f"Selected {num_selected} out of {original_feature_count} features")
-        self.logger.info(f"Feature reduction: {(1 - num_selected/original_feature_count)*100:.1f}%")
-        self.logger.info(f"Selected feature indices: {sorted(selected_indices)}")
+        self.logger.info(f"\nSelected {num_selected} continuous features")
+        self.logger.info(f"Selected indices: {sorted(self.selected_continuous_indices)}")
         
-        # Transform data with selected features
-        df_selected = self.selector_model.transform(df)
+        # Get feature names
+        self.selected_continuous_features = [
+            self.continuous_feature_names[i] for i in self.selected_continuous_indices
+        ]
+        self.logger.info(f"Selected features: {', '.join(self.selected_continuous_features)}")
         
-        # Rename column for consistency
-        df_selected = df_selected.withColumnRenamed("selectedFeatures", "features")
+        # Transform data
+        df = self.continuous_selector_model.transform(df)
         
-        self.logger.info("Feature selection completed successfully")
-        self.logger.info("=" * 60)
-        
-        return df_selected
+        return df
     
-    def get_feature_importance_scores(self, df, feature_names, feature_col="features", label_col="label"):
+    def _select_categorical_features(self, df):
+        """Select categorical features using F-test for categorical features with continuous label."""
+        self.logger.info("\n" + "-" * 60)
+        self.logger.info("SELECTING CATEGORICAL FEATURES")
+        self.logger.info("-" * 60)
+        
+        config_params = config.CATEGORICAL_FEATURE_SELECTION
+        
+        selector = UnivariateFeatureSelector(
+            featuresCol="categorical_features",
+            outputCol="selected_categorical_features",
+            labelCol="label",
+            featureType=config_params["featureType"],  # "categorical"
+            labelType=config_params["labelType"],      # "continuous" for regression
+            selectionMode=config_params["selectionMode"]
+        )
+        
+        selector.setSelectionThreshold(config_params["selectionThreshold"])
+        
+        self.logger.info(f"Configuration:")
+        self.logger.info(f"  - Feature type: {config_params['featureType']}")
+        self.logger.info(f"  - Label type: {config_params['labelType']}")
+        self.logger.info(f"  - Selection mode: {config_params['selectionMode']}")
+        self.logger.info(f"  - Threshold: {config_params['selectionThreshold']}")
+        
+        # Fit the selector
+        self.categorical_selector_model = selector.fit(df)
+        
+        # Get selected feature indices
+        self.selected_categorical_indices = self.categorical_selector_model.selectedFeatures
+        num_selected = len(self.selected_categorical_indices)
+        
+        self.logger.info(f"\nSelected {num_selected} categorical features")
+        self.logger.info(f"Selected indices: {sorted(self.selected_categorical_indices)}")
+        
+        # Get feature names
+        self.selected_categorical_features = [
+            self.categorical_feature_names[i] for i in self.selected_categorical_indices
+        ]
+        self.logger.info(f"Selected features: {', '.join(self.selected_categorical_features)}")
+        
+        # Transform data
+        df = self.categorical_selector_model.transform(df)
+        
+        return df
+    
+    def _combine_selected_features(self, df):
+        """Combine selected continuous and categorical features into final feature vector."""
+        self.logger.info("\nCombining selected features...")
+        
+        cols_to_assemble = []
+        
+        if len(self.selected_continuous_indices) > 0:
+            cols_to_assemble.append("selected_continuous_features")
+        
+        if len(self.selected_categorical_indices) > 0:
+            cols_to_assemble.append("selected_categorical_features")
+        
+        if len(cols_to_assemble) == 0:
+            self.logger.warning("No features selected! Using original features.")
+            return df
+        
+        # Use VectorAssembler to combine the selected feature vectors
+        final_assembler = VectorAssembler(
+            inputCols=cols_to_assemble,
+            outputCol="features",
+            handleInvalid="skip"
+        )
+        
+        df = final_assembler.transform(df)
+        
+        self.logger.info(f"Combined features into final 'features' vector")
+        
+        return df
+    
+    def get_feature_importance_scores(self, df, continuous_names, categorical_names, label_col="label"):
         """
         Calculate feature importance scores using correlation analysis.
         
         Args:
             df (DataFrame): DataFrame with features and label
-            feature_names (list): List of feature names
-            feature_col (str): Name of features column
+            continuous_names (list): List of continuous feature names
+            categorical_names (list): List of categorical feature names
             label_col (str): Name of label column
             
         Returns:
@@ -125,21 +266,27 @@ class FeatureEngineer:
         """
         self.logger.info("Calculating feature importance scores...")
         
-        # Calculate correlation between each feature and target
         feature_scores = {}
+        all_names = continuous_names + categorical_names
         
-        for idx, feature_name in enumerate(feature_names):
+        # Calculate correlation between each feature and target
+        for feature_name in all_names:
             if feature_name in df.columns:
-                # Calculate Pearson correlation
-                corr_result = df.stat.corr(feature_name, label_col)
-                feature_scores[feature_name] = abs(corr_result) if corr_result is not None else 0.0
+                try:
+                    # Calculate Pearson correlation
+                    corr_result = df.stat.corr(feature_name, label_col)
+                    feature_scores[feature_name] = abs(corr_result) if corr_result is not None else 0.0
+                except Exception as e:
+                    self.logger.warning(f"Could not calculate correlation for {feature_name}: {e}")
+                    feature_scores[feature_name] = 0.0
         
         # Sort by importance
         feature_scores = dict(sorted(feature_scores.items(), key=lambda x: x[1], reverse=True))
         
-        self.logger.info("Top 10 features by correlation:")
+        self.logger.info("\nTop 10 features by correlation with target:")
         for i, (feature, score) in enumerate(list(feature_scores.items())[:10], 1):
-            self.logger.info(f"  {i}. {feature}: {score:.4f}")
+            feature_type = "continuous" if feature in continuous_names else "categorical"
+            self.logger.info(f"  {i}. {feature} ({feature_type}): {score:.4f}")
         
         self.feature_scores = feature_scores
         return feature_scores
@@ -160,135 +307,23 @@ class FeatureEngineer:
         
         # Convert to pandas and save
         df_importance = pd.DataFrame([
-            {"Feature": feature, "Importance": score}
+            {
+                "Feature": feature, 
+                "Importance": score,
+                "Type": "continuous" if feature in self.continuous_feature_names else "categorical",
+                "Selected": feature in (self.selected_continuous_features + self.selected_categorical_features)
+            }
             for feature, score in self.feature_scores.items()
         ])
         
         df_importance.to_csv(output_path, index=False)
         self.logger.info(f"Feature importance scores saved to: {output_path}")
     
-    def create_interaction_features(self, df, feature_pairs=None):
+    def get_selected_feature_names(self):
         """
-        Create interaction features (product of feature pairs).
-        This can capture non-linear relationships.
+        Get names of all selected features.
         
-        Args:
-            df (DataFrame): Input DataFrame
-            feature_pairs (list): List of tuples specifying feature pairs
-            
         Returns:
-            DataFrame: DataFrame with additional interaction features
+            list: List of selected feature names
         """
-        if feature_pairs is None:
-            # Default interactions for weather data
-            feature_pairs = [
-                ("WND_SPEED", "WND_DIRECTION"),  # Wind characteristics
-                ("DEW_POINT", "SLP_PRESSURE"),   # Atmospheric conditions
-                ("HOUR", "MONTH"),                # Time-based patterns
-            ]
-        
-        self.logger.info(f"Creating {len(feature_pairs)} interaction features...")
-        
-        for feat1, feat2 in feature_pairs:
-            if feat1 in df.columns and feat2 in df.columns:
-                interaction_name = f"{feat1}_X_{feat2}"
-                df = df.withColumn(interaction_name, col(feat1) * col(feat2))
-                self.logger.info(f"Created interaction feature: {interaction_name}")
-        
-        return df
-    
-    def create_polynomial_features(self, df, degree=2, features=None):
-        """
-        Create polynomial features for selected columns.
-        
-        Args:
-            df (DataFrame): Input DataFrame
-            degree (int): Polynomial degree (2 for quadratic, 3 for cubic)
-            features (list): List of feature names to create polynomials for
-            
-        Returns:
-            DataFrame: DataFrame with polynomial features
-        """
-        if features is None:
-            # Default polynomial features for key weather variables
-            features = ["WND_SPEED", "DEW_POINT", "SLP_PRESSURE"]
-        
-        self.logger.info(f"Creating degree-{degree} polynomial features...")
-        
-        for feature in features:
-            if feature in df.columns:
-                for d in range(2, degree + 1):
-                    poly_name = f"{feature}_POW{d}"
-                    df = df.withColumn(poly_name, col(feature) ** d)
-                    self.logger.info(f"Created polynomial feature: {poly_name}")
-        
-        return df
-    
-    def get_correlation_matrix(self, df, feature_col="features"):
-        """
-        Calculate correlation matrix for features.
-        Useful for identifying multicollinearity.
-        
-        Args:
-            df (DataFrame): DataFrame with features
-            feature_col (str): Name of features vector column
-            
-        Returns:
-            DataFrame: Correlation matrix
-        """
-        self.logger.info("Calculating feature correlation matrix...")
-        
-        # Calculate Pearson correlation
-        corr_matrix = Correlation.corr(df, feature_col, "pearson").head()[0]
-        
-        self.logger.info(f"Correlation matrix shape: {corr_matrix.numRows} x {corr_matrix.numCols}")
-        
-        return corr_matrix
-    
-    def remove_highly_correlated_features(self, df, feature_names, threshold=0.95):
-        """
-        Remove highly correlated features to reduce multicollinearity.
-        
-        Args:
-            df (DataFrame): DataFrame with individual feature columns
-            feature_names (list): List of feature names
-            threshold (float): Correlation threshold (default: 0.95)
-            
-        Returns:
-            tuple: (DataFrame, list of remaining features)
-        """
-        self.logger.info(f"Removing features with correlation > {threshold}...")
-        
-        features_to_remove = set()
-        
-        # Calculate pairwise correlations
-        for i, feat1 in enumerate(feature_names):
-            if feat1 in features_to_remove or feat1 not in df.columns:
-                continue
-            
-            for feat2 in feature_names[i+1:]:
-                if feat2 in features_to_remove or feat2 not in df.columns:
-                    continue
-                
-                # Calculate correlation
-                corr = abs(df.stat.corr(feat1, feat2))
-                
-                if corr > threshold:
-                    # Remove feature with lower correlation to target
-                    corr1 = abs(df.stat.corr(feat1, "label"))
-                    corr2 = abs(df.stat.corr(feat2, "label"))
-                    
-                    if corr1 < corr2:
-                        features_to_remove.add(feat1)
-                        self.logger.info(f"Removing {feat1} (corr with {feat2}: {corr:.3f})")
-                    else:
-                        features_to_remove.add(feat2)
-                        self.logger.info(f"Removing {feat2} (corr with {feat1}: {corr:.3f})")
-        
-        # Keep only uncorrelated features
-        remaining_features = [f for f in feature_names if f not in features_to_remove]
-        
-        self.logger.info(f"Removed {len(features_to_remove)} highly correlated features")
-        self.logger.info(f"Remaining features: {len(remaining_features)}")
-        
-        return df, remaining_features
+        return self.selected_continuous_features + self.selected_categorical_features

@@ -97,12 +97,21 @@ def main():
             # Calculate feature importance
             feature_scores = feature_engineer.get_feature_importance_scores(
                 train_df,
-                preprocessor.feature_columns
+                preprocessor.continuous_features,
+                preprocessor.categorical_features
             )
             
-            # Perform univariate feature selection
-            train_df = feature_engineer.select_features_univariate(train_df)
-            test_df = feature_engineer.select_features_univariate(test_df)
+            # Perform univariate feature selection (treats categorical and continuous separately)
+            train_df = feature_engineer.select_features_by_type(
+                train_df,
+                preprocessor.continuous_features,
+                preprocessor.categorical_features
+            )
+            test_df = feature_engineer.select_features_by_type(
+                test_df,
+                preprocessor.continuous_features,
+                preprocessor.categorical_features
+            )
             
             # Save feature importance
             feature_engineer.save_feature_importance()

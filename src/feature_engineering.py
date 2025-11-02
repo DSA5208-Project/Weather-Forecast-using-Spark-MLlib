@@ -39,9 +39,8 @@ class FeatureEngineer:
         self.feature_scores = {}
         self.continuous_feature_names = []
         self.categorical_feature_names = []
-        
-    def select_features_by_type(self, df, continuous_feature_names, categorical_feature_names, 
-                                  feature_col="features", label_col="label"):
+
+    def select_features(self, df, continuous_feature_names, categorical_feature_names):
         """
         Perform univariate feature selection separately for continuous and categorical features.
         
@@ -54,9 +53,6 @@ class FeatureEngineer:
             df (DataFrame): DataFrame with features and label
             continuous_feature_names (list): List of continuous feature names
             categorical_feature_names (list): List of categorical feature names
-            feature_col (str): Name of features column
-            label_col (str): Name of label column
-            
         Returns:
             DataFrame: DataFrame with selected features
         """
@@ -83,22 +79,14 @@ class FeatureEngineer:
             self.logger.info("No continuous features to select")
             self.selected_continuous_indices = []
         
-        # Select categorical features
-        if len(categorical_feature_names) > 0:
-            df = self._select_categorical_features(df)
-        else:
-            self.logger.info("No categorical features to select")
-            self.selected_categorical_indices = []
-        
         # Combine selected features
-        df = self._combine_selected_features(df)
+        df = self._combine_final_features(df)
         
-        total_selected = len(self.selected_continuous_indices) + len(self.selected_categorical_indices)
+        total_selected = len(self.selected_continuous_indices) + len(self.categorical_indices)
         self.logger.info("=" * 60)
         self.logger.info(f"FEATURE SELECTION COMPLETE")
         self.logger.info(f"Selected {total_selected} out of {total_features} features")
         self.logger.info(f"  - Continuous: {len(self.selected_continuous_indices)}/{len(continuous_feature_names)}")
-        self.logger.info(f"  - Categorical: {len(self.selected_categorical_indices)}/{len(categorical_feature_names)}")
         self.logger.info(f"  - Reduction: {(1 - total_selected/total_features)*100:.1f}%")
         self.logger.info("=" * 60)
         
@@ -139,7 +127,6 @@ class FeatureEngineer:
             self.logger.info(f"  Created categorical_features vector: {len(categorical_names)} features")
         
         return df
-    
     def _select_continuous_features(self, df):
         """Select continuous features using F-test for regression."""
         self.logger.info("\n" + "-" * 60)
@@ -189,79 +176,7 @@ class FeatureEngineer:
         
         return df
     
-    def _select_categorical_features(self, df):
-        """Select categorical features using F-test for categorical features with continuous label."""
-        self.logger.info("\n" + "-" * 60)
-        self.logger.info("SELECTING CATEGORICAL FEATURES")
-        self.logger.info("-" * 60)
-        
-        config_params = config.CATEGORICAL_FEATURE_SELECTION
-        
-        feature_type = config_params.get("featureType")
-        label_type = config_params.get("labelType")
-
-        # Spark 3.5 does not support featureType="categorical" with a continuous label.
-        # The encoded categorical columns are numeric (one-hot), so fall back to treating
-        # them as continuous features while logging the adjustment.
-        if feature_type == "categorical" and label_type == "continuous":
-            self.logger.warning(
-                "Spark UnivariateFeatureSelector does not support featureType='categorical' "
-                "with a continuous label. Falling back to featureType='continuous'."
-            )
-            feature_type = "continuous"
-
-        selector = UnivariateFeatureSelector(
-            featuresCol="categorical_features",
-            outputCol="selected_categorical_features",
-            labelCol="label",
-            selectionMode=config_params["selectionMode"],
-        )
-
-        if feature_type:
-            selector = selector.setFeatureType(feature_type)
-        if label_type:
-            selector = selector.setLabelType(label_type)
-        if config_params.get("selectionThreshold") is not None:
-            selector = selector.setSelectionThreshold(config_params["selectionThreshold"])
-        
-        self.logger.info(f"Configuration:")
-        self.logger.info(f"  - Feature type: {config_params['featureType']}")
-        self.logger.info(f"  - Label type: {config_params['labelType']}")
-        self.logger.info(f"  - Selection mode: {config_params['selectionMode']}")
-        self.logger.info(f"  - Threshold: {config_params['selectionThreshold']}")
-        
-        # Fit the selector
-        self.categorical_selector_model = selector.fit(df)
-        
-        # Get selected feature indices
-        self.selected_categorical_indices = self.categorical_selector_model.selectedFeatures
-        num_selected = len(self.selected_categorical_indices)
-        
-        self.logger.info(f"\nSelected {num_selected} categorical features")
-        self.logger.info(f"Selected indices: {sorted(self.selected_categorical_indices)}")
-        
-        # Get feature names
-        self.selected_categorical_features = []
-        for idx in self.selected_categorical_indices:
-            if idx < len(self.categorical_feature_names):
-                self.selected_categorical_features.append(self.categorical_feature_names[idx])
-            else:
-                placeholder = f"categorical_feature_{idx}"
-                self.logger.debug(
-                    "Selected categorical feature index %d exceeds available feature names. "
-                    "Using placeholder '%s'.",
-                    idx,
-                    placeholder,
-                )
-                self.selected_categorical_features.append(placeholder)
-        self.logger.info(f"Selected features: {', '.join(self.selected_categorical_features)}")
-        
-        # Transform data
-        df = self.categorical_selector_model.transform(df)
-        
-        return df
-    
-    def _combine_selected_features(self, df):
+    def _combine_final_features(self, df):
         """Combine selected continuous and categorical features into final feature vector."""
         self.logger.info("\nCombining selected features...")
         
@@ -270,8 +185,8 @@ class FeatureEngineer:
         if len(self.selected_continuous_indices) > 0:
             cols_to_assemble.append("selected_continuous_features")
         
-        if len(self.selected_categorical_indices) > 0:
-            cols_to_assemble.append("selected_categorical_features")
+        if len(self.categorical_indices) > 0:
+            cols_to_assemble.append("categorical_features")
         
         if len(cols_to_assemble) == 0:
             self.logger.warning("No features selected! Using original features.")

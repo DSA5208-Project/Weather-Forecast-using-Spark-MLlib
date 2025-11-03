@@ -20,7 +20,7 @@ DATASET_URL = "https://www.ncei.noaa.gov/data/global-hourly/archive/csv/2024.tar
 DEFAULT_DATA_PATH = os.path.join(PROJECT_ROOT, "sample.csv")
 
 # Location of the full NOAA dataset after extraction
-RAW_DATA_PATH = os.path.join(PROJECT_ROOT, "2024.csv")  # After extraction
+RAW_DATA_PATH = "hdfs://pyspark-m/user/weather_data/2024.csv"
 
 # Target variable
 TARGET_COLUMN = "TMP"

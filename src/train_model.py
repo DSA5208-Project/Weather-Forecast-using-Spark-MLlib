@@ -169,6 +169,18 @@ class ModelTrainer:
             metricName="rmse"
         )
         
+        # MEMORY OPTIMIZATION: Set checkpoint directory for RandomForest
+        if model_name in ["RandomForestRegressor", "GBTRegressor"]:
+            checkpoint_dir = f"{config.OUTPUT_DIR}/checkpoints/{model_name}"
+            import os
+            os.makedirs(checkpoint_dir, exist_ok=True)
+            self.spark.sparkContext.setCheckpointDir(checkpoint_dir)
+            self.logger.info(f"Checkpoint directory set to: {checkpoint_dir}")
+        
+        # MEMORY OPTIMIZATION: Cache and persist training data
+        train_df.cache()
+        train_df.count()  # Force caching
+        
         # Create cross-validator
         cv = CrossValidator(
             estimator=model,
@@ -176,14 +188,23 @@ class ModelTrainer:
             evaluator=evaluator,
             numFolds=config.NUM_FOLDS,
             parallelism=config.PARALLELISM,
-            seed=config.RANDOM_SEED
+            seed=config.RANDOM_SEED,
+            collectSubModels=False  # Don't collect sub-models to save memory
         )
         
         self.logger.info(f"Starting {config.NUM_FOLDS}-fold cross-validation...")
         self.logger.info(f"Testing {len(param_grid)} parameter combinations")
         
         # Fit model
-        cv_model = cv.fit(train_df)
+        try:
+            cv_model = cv.fit(train_df)
+        except Exception as e:
+            self.logger.error(f"Error during cross-validation: {e}")
+            train_df.unpersist()  # Clean up cache
+            raise
+        
+        # Clean up cache
+        train_df.unpersist()
         
         training_time = time.time() - start_time
         

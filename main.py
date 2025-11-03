@@ -90,8 +90,8 @@ def main():
         logger.info(f"Number of columns: {len(processed_df.columns)}")
         logger.info(f"\nSchema:")
         processed_df.printSchema()
-        logger.info(f"\nFirst 20 rows:")
-        processed_df.show(20, truncate=False)
+        logger.info(f"\nFirst 50 rows:")
+        processed_df.show(50, truncate=False)
         logger.info("=" * 60 + "\n")
         
         logger.info("Data preprocessing completed\n")

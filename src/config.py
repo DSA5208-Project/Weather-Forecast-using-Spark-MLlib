@@ -141,8 +141,8 @@ MODELS_TO_TRAIN = [
 SPECIFIC_MODELS = []
 
 # Cross-validation parameters
-NUM_FOLDS = 5
-PARALLELISM = 4  # Number of parallel folds
+NUM_FOLDS = 3  # Reduced from 5 to save memory
+PARALLELISM = 1  # Reduced from 4 to prevent memory issues (trains folds sequentially)
 
 # Hyperparameter grids for each model
 HYPERPARAMETERS = {
@@ -151,9 +151,11 @@ HYPERPARAMETERS = {
         "elasticNetParam": [0.0, 0.5, 1.0]
     },
     "RandomForestRegressor": {
-        "numTrees": [10, 20, 50],
-        "maxDepth": [5, 10, 15],
-        "minInstancesPerNode": [1, 5, 10]
+        # SIGNIFICANTLY REDUCED to prevent memory overflow
+        # 27 combinations -> 6 combinations
+        "numTrees": [10, 30],           # Reduced from [10, 20, 50]
+        "maxDepth": [5, 10],            # Reduced from [5, 10, 15]
+        "minInstancesPerNode": [5]      # Reduced from [1, 5, 10]
     },
     "GBTRegressor": {
         "maxIter": [10, 20, 50],

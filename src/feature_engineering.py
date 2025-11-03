@@ -8,7 +8,7 @@ import pandas as pd
 from pyspark.sql import DataFrame
 from pyspark.ml.feature import UnivariateFeatureSelector, VectorAssembler, StandardScaler
 from pyspark.ml.stat import Correlation
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, variance
 from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql.types import DoubleType
 
@@ -141,6 +141,21 @@ class FeatureEngineer:
             selectionMode=config_params["selectionMode"],
         )
 
+        # Guard against degenerate datasets where variance cannot be computed
+        # (e.g. all label values identical after preprocessing). Spark's
+        # UnivariateFeatureSelector delegates to the Scala FValueTest which
+        # throws a MatchError when presented with zero-variance data. We detect
+        # this scenario proactively and simply keep all continuous features.
+        label_variance = df.select(variance("label").alias("var")).first()[0]
+        if label_variance is None or label_variance == 0:
+            self.logger.warning(
+                "Label variance is zero or undefined; skipping continuous feature selection"
+            )
+            self.selected_continuous_indices = list(range(len(self.continuous_feature_names)))
+            self.selected_continuous_features = list(self.continuous_feature_names)
+            df = df.withColumn("selected_continuous_features", col("continuous_features"))
+            return df
+
         if config_params.get("featureType"):
             selector = selector.setFeatureType(config_params["featureType"])
         if config_params.get("labelType"):
@@ -155,7 +170,17 @@ class FeatureEngineer:
         self.logger.info(f"  - Threshold: {config_params['selectionThreshold']}")
         
         # Fit the selector
-        self.continuous_selector_model = selector.fit(df)
+        try:
+            self.continuous_selector_model = selector.fit(df)
+        except Exception as exc:  # noqa: BLE001 - fallback to safe default
+            self.logger.warning(
+                "Continuous feature selection failed (%s). Falling back to all continuous features.",
+                exc,
+            )
+            self.selected_continuous_indices = list(range(len(self.continuous_feature_names)))
+            self.selected_continuous_features = list(self.continuous_feature_names)
+            df = df.withColumn("selected_continuous_features", col("continuous_features"))
+            return df
         
         # Get selected feature indices
         self.selected_continuous_indices = self.continuous_selector_model.selectedFeatures

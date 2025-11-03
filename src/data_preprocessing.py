@@ -168,7 +168,10 @@ class WeatherDataPreprocessor:
             if is_hdfs:
                 self.logger.info(f"Uploading extracted CSV to HDFS: {config.RAW_DATA_PATH}")
                 # Use Spark to upload to HDFS
-                temp_df = self.spark.read.csv(extracted_csv_path, header=True, inferSchema=True, 
+                # Need to use file:// prefix to tell Spark to read from local filesystem
+                local_file_uri = f"file://{extracted_csv_path}"
+                self.logger.info(f"Reading from local file: {local_file_uri}")
+                temp_df = self.spark.read.csv(local_file_uri, header=True, inferSchema=True, 
                                                escape='"', multiLine=True)
                 # Write to HDFS - this will create the file
                 temp_df.write.mode('overwrite').csv(config.RAW_DATA_PATH, header=True)

@@ -183,12 +183,32 @@ SPARK_MASTER = "local[*]"  # Use all available cores
 
 # Spark configuration
 SPARK_CONFIG = {
-    "spark.driver.memory": "4g",
-    "spark.executor.memory": "4g",
-    "spark.sql.shuffle.partitions": "200",
-    "spark.default.parallelism": "8",
+    # Memory Settings
+    "spark.driver.memory": "12g",  # Increased from 4g
+    "spark.executor.memory": "10g",  # Increased from 4g
+    "spark.executor.memoryOverhead": "2g",
+    
+    # Executor Configuration
+    "spark.executor.cores": "4",
+    "spark.executor.instances": "3",  # One per worker
+    
+    # Parallelism Settings
+    "spark.default.parallelism": "24",  # Increased from 8 (2-3x total cores)
+    "spark.sql.shuffle.partitions": "24",  # Reduced from 200, aligned with parallelism
+    
+    # Adaptive Query Execution (Good - Keep these!)
     "spark.sql.adaptive.enabled": "true",
-    "spark.sql.adaptive.coalescePartitions.enabled": "true"
+    "spark.sql.adaptive.coalescePartitions.enabled": "true",
+    "spark.sql.adaptive.skewJoin.enabled": "true",
+    
+    # Performance Optimizations
+    "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+    "spark.sql.files.maxPartitionBytes": "134217728",  # 128MB
+    "spark.sql.autoBroadcastJoinThreshold": "10485760",  # 10MB
+    
+    # Dynamic Allocation (Optional but recommended)
+    "spark.dynamicAllocation.enabled": "false",  # Set true if workload varies
+    "spark.shuffle.service.enabled": "false",
 }
 
 # ==================== OUTPUT SETTINGS ====================

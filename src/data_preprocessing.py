@@ -19,8 +19,7 @@ from pyspark.ml import Pipeline
 import src.config as config
 from src.utils import (
     parse_temperature_data, parse_dew_point_data, parse_sea_level_pressure,
-    parse_wind_data, parse_ceiling_data, parse_visibility_data,
-    extract_datetime_features, parse_precipitation_data, parse_sky_cover_layer,
+    parse_wind_data, parse_ceiling_data, parse_visibility_data, parse_precipitation_data, parse_sky_cover_layer,
     parse_atmospheric_pressure, parse_pressure_change, parse_present_weather,
     parse_wind_gust
 )

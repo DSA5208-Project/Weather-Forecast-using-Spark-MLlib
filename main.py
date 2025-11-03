@@ -76,8 +76,8 @@ def main():
         preprocessor = WeatherDataPreprocessor(spark)
         
         # Load data using configuration
-        data_path = config.DEFAULT_DATA_PATH
-        raw_df = preprocessor.load_data(data_path)
+        # data_path = config.DEFAULT_DATA_PATH
+        raw_df = preprocessor.load_data()
         
         # Preprocess data
         processed_df = preprocessor.prepare_dataset(raw_df)

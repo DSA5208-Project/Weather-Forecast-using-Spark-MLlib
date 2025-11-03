@@ -245,34 +245,6 @@ def parse_sea_level_pressure(slp_str):
     return parse_weather_value(slp_str, 0, 5, scale=10.0, missing_values=["99999"])
 
 
-def extract_datetime_features(date_str):
-    """
-    Extract hour, month, and day of year from ISO datetime string.
-    Format: "2003-01-01T00:53:00"
-    
-    Args:
-        date_str (str): ISO format datetime string
-        
-    Returns:
-        tuple: (hour, month, day_of_year) or (None, None, None)
-    """
-    try:
-        if date_str is None or date_str == "":
-            return None, None, None
-        
-        # Parse ISO format datetime
-        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-        
-        hour = dt.hour
-        month = dt.month
-        day_of_year = dt.timetuple().tm_yday
-        
-        return hour, month, day_of_year
-    
-    except (ValueError, AttributeError):
-        return None, None, None
-
-
 # ==================== ADDITIONAL PARSING FUNCTIONS ====================
 
 def parse_precipitation_data(precip_str):

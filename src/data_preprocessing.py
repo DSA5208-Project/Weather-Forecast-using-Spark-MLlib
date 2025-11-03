@@ -60,8 +60,30 @@ class WeatherDataPreprocessor:
         else:
             data_path = file_path if os.path.isabs(file_path) else os.path.join(config.PROJECT_ROOT, file_path)
 
-        # Check if data exists, if not, download it when using default raw path
-        if not os.path.exists(data_path):
+        # Check if data exists
+        is_hdfs = data_path.startswith('hdfs://')
+        data_exists = False
+        
+        if is_hdfs:
+            # For HDFS paths, use Spark to check existence
+            try:
+                # Try to read a small sample to check if file exists
+                self.spark.read.csv(data_path, header=True).limit(1).count()
+                data_exists = True
+                self.logger.info(f"Found existing data in HDFS: {data_path}")
+            except Exception:
+                data_exists = False
+                self.logger.info(f"Data not found in HDFS: {data_path}")
+        else:
+            # For local paths, use os.path.exists
+            data_exists = os.path.exists(data_path)
+            if data_exists:
+                self.logger.info(f"Found existing data locally: {data_path}")
+            else:
+                self.logger.info(f"Data not found locally: {data_path}")
+        
+        # Download if data doesn't exist and we're using the default raw path
+        if not data_exists:
             if data_path == config.RAW_DATA_PATH:
                 self.logger.info(f"Data file not found at {config.RAW_DATA_PATH}")
                 self._download_and_extract_data()
@@ -92,13 +114,20 @@ class WeatherDataPreprocessor:
         """
         Download and extract weather data from DATASET_URL.
         Downloads the tar.gz file and extracts the CSV.
+        Handles both local and HDFS paths.
         """
         self.logger.info(f"Downloading data from {config.DATASET_URL}...")
         
         try:
-            # Download the tar.gz file
-            tar_path = config.RAW_DATA_PATH.replace('.csv', '.tar.gz')
+            # Determine if we're working with HDFS or local filesystem
+            is_hdfs = config.RAW_DATA_PATH.startswith('hdfs://')
             
+            # Use temporary local directory for download and extraction
+            import tempfile
+            temp_dir = tempfile.mkdtemp()
+            temp_tar_path = os.path.join(temp_dir, '2024.tar.gz')
+            
+            # Download the tar.gz file to local temporary directory
             response = requests.get(config.DATASET_URL, stream=True)
             response.raise_for_status()
             
@@ -107,8 +136,8 @@ class WeatherDataPreprocessor:
             block_size = 8192
             downloaded_size = 0
             
-            self.logger.info(f"Downloading to {tar_path}...")
-            with open(tar_path, 'wb') as f:
+            self.logger.info(f"Downloading to temporary location: {temp_tar_path}...")
+            with open(temp_tar_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=block_size):
                     if chunk:
                         f.write(chunk)
@@ -120,8 +149,8 @@ class WeatherDataPreprocessor:
             
             self.logger.info(f"Download complete. Extracting archive...")
             
-            # Extract the tar.gz file
-            with tarfile.open(tar_path, 'r:gz') as tar:
+            # Extract the tar.gz file to temporary directory
+            with tarfile.open(temp_tar_path, 'r:gz') as tar:
                 # Find the CSV file in the archive
                 csv_members = [m for m in tar.getmembers() if m.name.endswith('.csv')]
                 
@@ -131,18 +160,30 @@ class WeatherDataPreprocessor:
                 # Extract the first CSV file
                 csv_member = csv_members[0]
                 self.logger.info(f"Extracting {csv_member.name}...")
+                tar.extract(csv_member, path=temp_dir)
                 
-                tar.extract(csv_member, path=os.path.dirname(config.RAW_DATA_PATH))
-                
-                # Rename extracted file to expected name if different
-                extracted_path = os.path.join(os.path.dirname(config.RAW_DATA_PATH), csv_member.name)
-                if extracted_path != config.RAW_DATA_PATH:
-                    os.rename(extracted_path, config.RAW_DATA_PATH)
+                extracted_csv_path = os.path.join(temp_dir, csv_member.name)
             
-            # Clean up the tar.gz file
-            os.remove(tar_path)
+            # Move/upload the extracted CSV to the final destination
+            if is_hdfs:
+                self.logger.info(f"Uploading extracted CSV to HDFS: {config.RAW_DATA_PATH}")
+                # Use Spark to upload to HDFS
+                temp_df = self.spark.read.csv(extracted_csv_path, header=True, inferSchema=True, 
+                                               escape='"', multiLine=True)
+                # Write to HDFS - this will create the file
+                temp_df.write.mode('overwrite').csv(config.RAW_DATA_PATH, header=True)
+                self.logger.info(f"Data successfully uploaded to HDFS: {config.RAW_DATA_PATH}")
+            else:
+                # For local filesystem, just move the file
+                os.makedirs(os.path.dirname(config.RAW_DATA_PATH), exist_ok=True)
+                import shutil
+                shutil.move(extracted_csv_path, config.RAW_DATA_PATH)
+                self.logger.info(f"Data successfully moved to: {config.RAW_DATA_PATH}")
             
-            self.logger.info(f"Data successfully downloaded and extracted to {config.RAW_DATA_PATH}")
+            # Clean up temporary directory
+            import shutil
+            shutil.rmtree(temp_dir)
+            self.logger.info("Temporary files cleaned up")
             
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error downloading data: {e}")

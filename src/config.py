@@ -151,11 +151,9 @@ HYPERPARAMETERS = {
         "elasticNetParam": [0.0, 0.5, 1.0]
     },
     "RandomForestRegressor": {
-        # SIGNIFICANTLY REDUCED to prevent memory overflow
-        # 27 combinations -> 6 combinations
-        "numTrees": [10, 20, 50],           # Reduced from [10, 20, 50]
-        "maxDepth": [5, 10, 15],            # Reduced from [5, 10, 15]
-        "minInstancesPerNode": [1, 5, 10]      # Reduced from [1, 5, 10]
+        "numTrees": [10, 20, 50], 
+        "maxDepth": [5, 10, 15], 
+        "minInstancesPerNode": [1, 5, 10]
     },
     "GBTRegressor": {
         "maxIter": [10, 20, 50],

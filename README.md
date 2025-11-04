@@ -293,41 +293,6 @@ gcloud dataproc jobs submit pyspark main.py \
 exit
 ```
 
-### Using Google Cloud Storage
-
-#### 1. Create a storage bucket
-
-```bash
-gsutil mb gs://[BUCKET_NAME]
-```
-
-#### 2. Upload data to Cloud Storage
-
-```bash
-# Upload single file
-gsutil cp sample.csv gs://[BUCKET_NAME]/data/
-
-# Upload directory
-gsutil cp -r data/ gs://[BUCKET_NAME]/data/
-```
-
-#### 3. Modify code to read from GCS
-
-In `src/config.py`, update the data path:
-
-```python
-DEFAULT_DATA_PATH = "gs://[BUCKET_NAME]/data/sample.csv"
-```
-
-#### 4. Run job with GCS data
-
-```bash
-gcloud dataproc jobs submit pyspark main.py \
-  --cluster=weather-spark-cluster \
-  --region=us-central1 \
-  --py-files=src/__init__.py,src/config.py,src/data_preprocessing.py,src/feature_engineering.py,src/train_model.py,src/evaluate_model.py,src/utils.py
-```
-
 ### Clean Up Resources
 
 **Important:** Delete resources when not in use to avoid charges!

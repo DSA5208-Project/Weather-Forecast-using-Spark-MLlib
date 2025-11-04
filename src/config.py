@@ -101,7 +101,7 @@ TRAIN_TEST_SPLIT_RATIO = 0.7
 RANDOM_SEED = 42
 
 # Data cleaning settings
-MAX_MISSING_PERCENT = 0.6  # Drop features with >60% missing values
+MAX_MISSING_PERCENT = 0.2  # Drop features with >20% missing values
 
 # Outlier detection method (IQR)
 IQR_MULTIPLIER = 1.5    # For IQR method

@@ -88,7 +88,6 @@ class FeatureEngineer:
         self.logger.info(f"  - Continuous: {len(self.selected_continuous_indices)}/{len(continuous_feature_names)}")
         self.logger.info(f"  - Reduction: {(1 - total_selected/total_features)*100:.1f}%")
         self.logger.info(f"Feature selected: {', '.join(self.selected_continuous_features)}")
-        df.show(20, truncate=False)
         self.logger.info("=" * 60)
         
         return df

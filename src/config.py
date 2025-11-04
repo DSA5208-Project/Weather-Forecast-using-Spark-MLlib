@@ -186,43 +186,31 @@ SPARK_MASTER = "local[*]"  # Use all available cores
 # Spark configuration
 SPARK_CONFIG = {
     # Memory Settings
-    "spark.driver.memory": "12g",  # Good for n2-highmem-4 master (32GB RAM)
-    "spark.executor.memory": "24g",  # Optimized for 64GB worker RAM
-    "spark.executor.memoryOverhead": "6g",  # 25% of executor memory for overhead
+    "spark.driver.memory": "12g",
+    "spark.executor.memory": "20g",
+    "spark.executor.memoryOverhead": "4g",
     
     # Executor Configuration
-    "spark.executor.cores": "4",  # 4 cores per executor (2 executors per worker)
-    "spark.executor.instances": "8",  # 2 executors × 4 workers = 8 total
+    "spark.executor.cores": "4",
+    "spark.executor.instances": "4",  # Changed from 6 to 4 (3 workers × ~1.3 executors)
     
     # Parallelism Settings
-    "spark.default.parallelism": "64",  # 2x total cores (32 cores × 2)
-    "spark.sql.shuffle.partitions": "64",  # Aligned with parallelism
+    "spark.default.parallelism": "32",  # Changed from 48 (3 workers × 8 cores × 1.3)
+    "spark.sql.shuffle.partitions": "32",  # Aligned with parallelism
     
     # Adaptive Query Execution
     "spark.sql.adaptive.enabled": "true",
     "spark.sql.adaptive.coalescePartitions.enabled": "true",
     "spark.sql.adaptive.skewJoin.enabled": "true",
-    "spark.sql.adaptive.advisoryPartitionSizeInBytes": "134217728",  # 128MB
     
     # Performance Optimizations
     "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
-    "spark.kryoserializer.buffer.max": "512m",
-    "spark.sql.files.maxPartitionBytes": "134217728",  # 128MB
-    "spark.sql.autoBroadcastJoinThreshold": "52428800",  # 50MB (increased)
+    "spark.sql.files.maxPartitionBytes": "134217728",
+    "spark.sql.autoBroadcastJoinThreshold": "10485760",
     
-    # Dynamic Allocation (Disabled for predictable performance)
+    # Dynamic Allocation
     "spark.dynamicAllocation.enabled": "false",
     "spark.shuffle.service.enabled": "false",
-    
-    # Network & Timeout Settings
-    "spark.network.timeout": "600s",
-    "spark.executor.heartbeatInterval": "60s",
-    "spark.driver.maxResultSize": "4g",  # Increased for larger results
-    
-    # Shuffle Optimization
-    "spark.shuffle.compress": "true",
-    "spark.shuffle.spill.compress": "true",
-    "spark.io.compression.codec": "snappy",
 }
 
 # ==================== OUTPUT SETTINGS ====================

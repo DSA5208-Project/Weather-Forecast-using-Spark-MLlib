@@ -1,0 +1,948 @@
+2025-11-04 15:22:16,315 - src.utils - INFO - ================================================================================
+2025-11-04 15:22:16,315 - src.utils - INFO - WEATHER FORECAST USING APACHE SPARK MLLIB
+2025-11-04 15:22:16,315 - src.utils - INFO - ================================================================================
+2025-11-04 15:22:16,315 - src.utils - INFO - 
+2025-11-04 15:22:16,315 - src.utils - INFO - STEP 1: Initializing Spark Session
+2025-11-04 15:22:16,315 - src.utils - INFO - --------------------------------------------------------------------------------
+2025-11-04 15:22:16,315 - src.utils - INFO - Creating Spark session: Weather-Forecast-MLlib
+2025-11-04 15:22:23,122 - src.utils - INFO - Spark version: 3.5.3
+2025-11-04 15:22:23,122 - src.utils - INFO - Spark master: local[*]
+2025-11-04 15:22:23,122 - src.utils - INFO - Spark session initialized successfully
+
+2025-11-04 15:22:23,122 - src.utils - INFO - STEP 2: Loading and Preprocessing Data
+2025-11-04 15:22:23,122 - src.utils - INFO - --------------------------------------------------------------------------------
+2025-11-04 15:22:25,456 - src.data_preprocessing - INFO - Data not found in HDFS: hdfs://pyspark-enhanced-m/user/weather_data/2024.csv
+2025-11-04 15:22:25,456 - src.data_preprocessing - INFO - Data file not found at hdfs://pyspark-enhanced-m/user/weather_data/2024.csv
+2025-11-04 15:22:25,457 - src.data_preprocessing - INFO - Downloading data from https://www.ncei.noaa.gov/data/global-hourly/archive/csv/2024.tar.gz...
+2025-11-04 15:22:25,699 - src.data_preprocessing - INFO - Downloading to temporary location: /tmp/tmpk7v7ysq5/2024.tar.gz...
+2025-11-04 15:22:25,980 - src.data_preprocessing - INFO - Download progress: 0.2%
+2025-11-04 15:22:26,064 - src.data_preprocessing - INFO - Download progress: 0.3%
+2025-11-04 15:22:26,147 - src.data_preprocessing - INFO - Download progress: 0.5%
+2025-11-04 15:22:26,229 - src.data_preprocessing - INFO - Download progress: 0.7%
+2025-11-04 15:22:26,300 - src.data_preprocessing - INFO - Download progress: 0.8%
+2025-11-04 15:22:26,384 - src.data_preprocessing - INFO - Download progress: 1.0%
+2025-11-04 15:22:26,468 - src.data_preprocessing - INFO - Download progress: 1.2%
+2025-11-04 15:22:26,535 - src.data_preprocessing - INFO - Download progress: 1.3%
+2025-11-04 15:22:26,628 - src.data_preprocessing - INFO - Download progress: 1.5%
+2025-11-04 15:22:26,698 - src.data_preprocessing - INFO - Download progress: 1.7%
+2025-11-04 15:22:26,783 - src.data_preprocessing - INFO - Download progress: 1.8%
+2025-11-04 15:22:26,922 - src.data_preprocessing - INFO - Download progress: 2.0%
+2025-11-04 15:22:27,009 - src.data_preprocessing - INFO - Download progress: 2.2%
+2025-11-04 15:22:27,093 - src.data_preprocessing - INFO - Download progress: 2.3%
+2025-11-04 15:22:27,170 - src.data_preprocessing - INFO - Download progress: 2.5%
+2025-11-04 15:22:27,245 - src.data_preprocessing - INFO - Download progress: 2.7%
+2025-11-04 15:22:27,450 - src.data_preprocessing - INFO - Download progress: 2.8%
+2025-11-04 15:22:27,702 - src.data_preprocessing - INFO - Download progress: 3.0%
+2025-11-04 15:22:27,974 - src.data_preprocessing - INFO - Download progress: 3.2%
+2025-11-04 15:22:28,168 - src.data_preprocessing - INFO - Download progress: 3.3%
+2025-11-04 15:22:28,354 - src.data_preprocessing - INFO - Download progress: 3.5%
+2025-11-04 15:22:28,478 - src.data_preprocessing - INFO - Download progress: 3.7%
+2025-11-04 15:22:28,600 - src.data_preprocessing - INFO - Download progress: 3.8%
+2025-11-04 15:22:28,727 - src.data_preprocessing - INFO - Download progress: 4.0%
+2025-11-04 15:22:28,844 - src.data_preprocessing - INFO - Download progress: 4.2%
+2025-11-04 15:22:29,013 - src.data_preprocessing - INFO - Download progress: 4.3%
+2025-11-04 15:22:29,099 - src.data_preprocessing - INFO - Download progress: 4.5%
+2025-11-04 15:22:29,190 - src.data_preprocessing - INFO - Download progress: 4.7%
+2025-11-04 15:22:29,274 - src.data_preprocessing - INFO - Download progress: 4.8%
+2025-11-04 15:22:29,388 - src.data_preprocessing - INFO - Download progress: 5.0%
+2025-11-04 15:22:29,464 - src.data_preprocessing - INFO - Download progress: 5.2%
+2025-11-04 15:22:29,541 - src.data_preprocessing - INFO - Download progress: 5.3%
+2025-11-04 15:22:29,674 - src.data_preprocessing - INFO - Download progress: 5.5%
+2025-11-04 15:22:29,950 - src.data_preprocessing - INFO - Download progress: 5.7%
+2025-11-04 15:22:30,108 - src.data_preprocessing - INFO - Download progress: 5.8%
+2025-11-04 15:22:30,271 - src.data_preprocessing - INFO - Download progress: 6.0%
+2025-11-04 15:22:30,371 - src.data_preprocessing - INFO - Download progress: 6.2%
+2025-11-04 15:22:30,456 - src.data_preprocessing - INFO - Download progress: 6.3%
+2025-11-04 15:22:30,580 - src.data_preprocessing - INFO - Download progress: 6.5%
+2025-11-04 15:22:30,765 - src.data_preprocessing - INFO - Download progress: 6.7%
+2025-11-04 15:22:30,896 - src.data_preprocessing - INFO - Download progress: 6.8%
+2025-11-04 15:22:30,992 - src.data_preprocessing - INFO - Download progress: 7.0%
+2025-11-04 15:22:31,094 - src.data_preprocessing - INFO - Download progress: 7.2%
+2025-11-04 15:22:31,170 - src.data_preprocessing - INFO - Download progress: 7.3%
+2025-11-04 15:22:31,249 - src.data_preprocessing - INFO - Download progress: 7.5%
+2025-11-04 15:22:31,347 - src.data_preprocessing - INFO - Download progress: 7.7%
+2025-11-04 15:22:31,433 - src.data_preprocessing - INFO - Download progress: 7.8%
+2025-11-04 15:22:31,514 - src.data_preprocessing - INFO - Download progress: 8.0%
+2025-11-04 15:22:31,594 - src.data_preprocessing - INFO - Download progress: 8.2%
+2025-11-04 15:22:31,665 - src.data_preprocessing - INFO - Download progress: 8.3%
+2025-11-04 15:22:31,751 - src.data_preprocessing - INFO - Download progress: 8.5%
+2025-11-04 15:22:31,835 - src.data_preprocessing - INFO - Download progress: 8.7%
+2025-11-04 15:22:31,915 - src.data_preprocessing - INFO - Download progress: 8.8%
+2025-11-04 15:22:31,987 - src.data_preprocessing - INFO - Download progress: 9.0%
+2025-11-04 15:22:32,071 - src.data_preprocessing - INFO - Download progress: 9.2%
+2025-11-04 15:22:32,155 - src.data_preprocessing - INFO - Download progress: 9.3%
+2025-11-04 15:22:32,222 - src.data_preprocessing - INFO - Download progress: 9.5%
+2025-11-04 15:22:32,306 - src.data_preprocessing - INFO - Download progress: 9.6%
+2025-11-04 15:22:32,391 - src.data_preprocessing - INFO - Download progress: 9.8%
+2025-11-04 15:22:32,463 - src.data_preprocessing - INFO - Download progress: 10.0%
+2025-11-04 15:22:32,543 - src.data_preprocessing - INFO - Download progress: 10.1%
+2025-11-04 15:22:32,626 - src.data_preprocessing - INFO - Download progress: 10.3%
+2025-11-04 15:22:32,695 - src.data_preprocessing - INFO - Download progress: 10.5%
+2025-11-04 15:22:32,780 - src.data_preprocessing - INFO - Download progress: 10.6%
+2025-11-04 15:22:32,861 - src.data_preprocessing - INFO - Download progress: 10.8%
+2025-11-04 15:22:32,933 - src.data_preprocessing - INFO - Download progress: 11.0%
+2025-11-04 15:22:33,011 - src.data_preprocessing - INFO - Download progress: 11.1%
+2025-11-04 15:22:33,093 - src.data_preprocessing - INFO - Download progress: 11.3%
+2025-11-04 15:22:33,168 - src.data_preprocessing - INFO - Download progress: 11.5%
+2025-11-04 15:22:33,246 - src.data_preprocessing - INFO - Download progress: 11.6%
+2025-11-04 15:22:33,331 - src.data_preprocessing - INFO - Download progress: 11.8%
+2025-11-04 15:22:33,405 - src.data_preprocessing - INFO - Download progress: 12.0%
+2025-11-04 15:22:33,481 - src.data_preprocessing - INFO - Download progress: 12.1%
+2025-11-04 15:22:33,566 - src.data_preprocessing - INFO - Download progress: 12.3%
+2025-11-04 15:22:33,642 - src.data_preprocessing - INFO - Download progress: 12.5%
+2025-11-04 15:22:33,714 - src.data_preprocessing - INFO - Download progress: 12.6%
+2025-11-04 15:22:33,800 - src.data_preprocessing - INFO - Download progress: 12.8%
+2025-11-04 15:22:33,868 - src.data_preprocessing - INFO - Download progress: 13.0%
+2025-11-04 15:22:33,951 - src.data_preprocessing - INFO - Download progress: 13.1%
+2025-11-04 15:22:34,035 - src.data_preprocessing - INFO - Download progress: 13.3%
+2025-11-04 15:22:34,117 - src.data_preprocessing - INFO - Download progress: 13.5%
+2025-11-04 15:22:34,187 - src.data_preprocessing - INFO - Download progress: 13.6%
+2025-11-04 15:22:34,271 - src.data_preprocessing - INFO - Download progress: 13.8%
+2025-11-04 15:22:34,356 - src.data_preprocessing - INFO - Download progress: 14.0%
+2025-11-04 15:22:34,425 - src.data_preprocessing - INFO - Download progress: 14.1%
+2025-11-04 15:22:34,506 - src.data_preprocessing - INFO - Download progress: 14.3%
+2025-11-04 15:22:34,590 - src.data_preprocessing - INFO - Download progress: 14.5%
+2025-11-04 15:22:34,667 - src.data_preprocessing - INFO - Download progress: 14.6%
+2025-11-04 15:22:34,749 - src.data_preprocessing - INFO - Download progress: 14.8%
+2025-11-04 15:22:34,828 - src.data_preprocessing - INFO - Download progress: 15.0%
+2025-11-04 15:22:34,912 - src.data_preprocessing - INFO - Download progress: 15.1%
+2025-11-04 15:22:34,989 - src.data_preprocessing - INFO - Download progress: 15.3%
+2025-11-04 15:22:35,063 - src.data_preprocessing - INFO - Download progress: 15.5%
+2025-11-04 15:22:35,149 - src.data_preprocessing - INFO - Download progress: 15.6%
+2025-11-04 15:22:35,223 - src.data_preprocessing - INFO - Download progress: 15.8%
+2025-11-04 15:22:35,299 - src.data_preprocessing - INFO - Download progress: 16.0%
+2025-11-04 15:22:35,385 - src.data_preprocessing - INFO - Download progress: 16.1%
+2025-11-04 15:22:35,453 - src.data_preprocessing - INFO - Download progress: 16.3%
+2025-11-04 15:22:35,539 - src.data_preprocessing - INFO - Download progress: 16.5%
+2025-11-04 15:22:35,618 - src.data_preprocessing - INFO - Download progress: 16.6%
+2025-11-04 15:22:35,691 - src.data_preprocessing - INFO - Download progress: 16.8%
+2025-11-04 15:22:35,775 - src.data_preprocessing - INFO - Download progress: 17.0%
+2025-11-04 15:22:35,847 - src.data_preprocessing - INFO - Download progress: 17.1%
+2025-11-04 15:22:35,928 - src.data_preprocessing - INFO - Download progress: 17.3%
+2025-11-04 15:22:36,011 - src.data_preprocessing - INFO - Download progress: 17.5%
+2025-11-04 15:22:36,083 - src.data_preprocessing - INFO - Download progress: 17.6%
+2025-11-04 15:22:36,176 - src.data_preprocessing - INFO - Download progress: 17.8%
+2025-11-04 15:22:36,243 - src.data_preprocessing - INFO - Download progress: 18.0%
+2025-11-04 15:22:36,333 - src.data_preprocessing - INFO - Download progress: 18.1%
+2025-11-04 15:22:36,406 - src.data_preprocessing - INFO - Download progress: 18.3%
+2025-11-04 15:22:36,499 - src.data_preprocessing - INFO - Download progress: 18.5%
+2025-11-04 15:22:36,567 - src.data_preprocessing - INFO - Download progress: 18.6%
+2025-11-04 15:22:36,662 - src.data_preprocessing - INFO - Download progress: 18.8%
+2025-11-04 15:22:36,870 - src.data_preprocessing - INFO - Download progress: 19.0%
+2025-11-04 15:22:36,947 - src.data_preprocessing - INFO - Download progress: 19.1%
+2025-11-04 15:22:37,026 - src.data_preprocessing - INFO - Download progress: 19.3%
+2025-11-04 15:22:37,108 - src.data_preprocessing - INFO - Download progress: 19.5%
+2025-11-04 15:22:37,182 - src.data_preprocessing - INFO - Download progress: 19.6%
+2025-11-04 15:22:37,265 - src.data_preprocessing - INFO - Download progress: 19.8%
+2025-11-04 15:22:37,337 - src.data_preprocessing - INFO - Download progress: 20.0%
+2025-11-04 15:22:37,424 - src.data_preprocessing - INFO - Download progress: 20.1%
+2025-11-04 15:22:37,500 - src.data_preprocessing - INFO - Download progress: 20.3%
+2025-11-04 15:22:37,584 - src.data_preprocessing - INFO - Download progress: 20.5%
+2025-11-04 15:22:37,664 - src.data_preprocessing - INFO - Download progress: 20.6%
+2025-11-04 15:22:37,745 - src.data_preprocessing - INFO - Download progress: 20.8%
+2025-11-04 15:22:37,842 - src.data_preprocessing - INFO - Download progress: 21.0%
+2025-11-04 15:22:37,949 - src.data_preprocessing - INFO - Download progress: 21.1%
+2025-11-04 15:22:38,038 - src.data_preprocessing - INFO - Download progress: 21.3%
+2025-11-04 15:22:38,145 - src.data_preprocessing - INFO - Download progress: 21.5%
+2025-11-04 15:22:38,233 - src.data_preprocessing - INFO - Download progress: 21.6%
+2025-11-04 15:22:38,341 - src.data_preprocessing - INFO - Download progress: 21.8%
+2025-11-04 15:22:38,429 - src.data_preprocessing - INFO - Download progress: 22.0%
+2025-11-04 15:22:38,534 - src.data_preprocessing - INFO - Download progress: 22.1%
+2025-11-04 15:22:38,623 - src.data_preprocessing - INFO - Download progress: 22.3%
+2025-11-04 15:22:38,711 - src.data_preprocessing - INFO - Download progress: 22.5%
+2025-11-04 15:22:38,816 - src.data_preprocessing - INFO - Download progress: 22.6%
+2025-11-04 15:22:38,902 - src.data_preprocessing - INFO - Download progress: 22.8%
+2025-11-04 15:22:38,989 - src.data_preprocessing - INFO - Download progress: 23.0%
+2025-11-04 15:22:39,094 - src.data_preprocessing - INFO - Download progress: 23.1%
+2025-11-04 15:22:39,214 - src.data_preprocessing - INFO - Download progress: 23.3%
+2025-11-04 15:22:39,352 - src.data_preprocessing - INFO - Download progress: 23.5%
+2025-11-04 15:22:39,467 - src.data_preprocessing - INFO - Download progress: 23.6%
+2025-11-04 15:22:39,605 - src.data_preprocessing - INFO - Download progress: 23.8%
+2025-11-04 15:22:39,719 - src.data_preprocessing - INFO - Download progress: 24.0%
+2025-11-04 15:22:39,858 - src.data_preprocessing - INFO - Download progress: 24.1%
+2025-11-04 15:22:39,973 - src.data_preprocessing - INFO - Download progress: 24.3%
+2025-11-04 15:22:40,109 - src.data_preprocessing - INFO - Download progress: 24.5%
+2025-11-04 15:22:40,224 - src.data_preprocessing - INFO - Download progress: 24.6%
+2025-11-04 15:22:40,356 - src.data_preprocessing - INFO - Download progress: 24.8%
+2025-11-04 15:22:40,473 - src.data_preprocessing - INFO - Download progress: 25.0%
+2025-11-04 15:22:40,589 - src.data_preprocessing - INFO - Download progress: 25.1%
+2025-11-04 15:22:40,722 - src.data_preprocessing - INFO - Download progress: 25.3%
+2025-11-04 15:22:40,836 - src.data_preprocessing - INFO - Download progress: 25.5%
+2025-11-04 15:22:40,951 - src.data_preprocessing - INFO - Download progress: 25.6%
+2025-11-04 15:22:41,076 - src.data_preprocessing - INFO - Download progress: 25.8%
+2025-11-04 15:22:41,195 - src.data_preprocessing - INFO - Download progress: 26.0%
+2025-11-04 15:22:41,308 - src.data_preprocessing - INFO - Download progress: 26.1%
+2025-11-04 15:22:41,424 - src.data_preprocessing - INFO - Download progress: 26.3%
+2025-11-04 15:22:41,539 - src.data_preprocessing - INFO - Download progress: 26.5%
+2025-11-04 15:22:41,690 - src.data_preprocessing - INFO - Download progress: 26.6%
+2025-11-04 15:22:41,839 - src.data_preprocessing - INFO - Download progress: 26.8%
+2025-11-04 15:22:41,996 - src.data_preprocessing - INFO - Download progress: 27.0%
+2025-11-04 15:22:42,162 - src.data_preprocessing - INFO - Download progress: 27.1%
+2025-11-04 15:22:42,321 - src.data_preprocessing - INFO - Download progress: 27.3%
+2025-11-04 15:22:42,478 - src.data_preprocessing - INFO - Download progress: 27.5%
+2025-11-04 15:22:42,638 - src.data_preprocessing - INFO - Download progress: 27.6%
+2025-11-04 15:22:42,796 - src.data_preprocessing - INFO - Download progress: 27.8%
+2025-11-04 15:22:42,946 - src.data_preprocessing - INFO - Download progress: 28.0%
+2025-11-04 15:22:43,104 - src.data_preprocessing - INFO - Download progress: 28.1%
+2025-11-04 15:22:43,252 - src.data_preprocessing - INFO - Download progress: 28.3%
+2025-11-04 15:22:43,402 - src.data_preprocessing - INFO - Download progress: 28.4%
+2025-11-04 15:22:43,556 - src.data_preprocessing - INFO - Download progress: 28.6%
+2025-11-04 15:22:43,700 - src.data_preprocessing - INFO - Download progress: 28.8%
+2025-11-04 15:22:43,846 - src.data_preprocessing - INFO - Download progress: 28.9%
+2025-11-04 15:22:43,992 - src.data_preprocessing - INFO - Download progress: 29.1%
+2025-11-04 15:22:44,142 - src.data_preprocessing - INFO - Download progress: 29.3%
+2025-11-04 15:22:44,286 - src.data_preprocessing - INFO - Download progress: 29.4%
+2025-11-04 15:22:44,433 - src.data_preprocessing - INFO - Download progress: 29.6%
+2025-11-04 15:22:44,577 - src.data_preprocessing - INFO - Download progress: 29.8%
+2025-11-04 15:22:44,720 - src.data_preprocessing - INFO - Download progress: 29.9%
+2025-11-04 15:22:44,860 - src.data_preprocessing - INFO - Download progress: 30.1%
+2025-11-04 15:22:45,002 - src.data_preprocessing - INFO - Download progress: 30.3%
+2025-11-04 15:22:45,142 - src.data_preprocessing - INFO - Download progress: 30.4%
+2025-11-04 15:22:45,282 - src.data_preprocessing - INFO - Download progress: 30.6%
+2025-11-04 15:22:45,425 - src.data_preprocessing - INFO - Download progress: 30.8%
+2025-11-04 15:22:45,568 - src.data_preprocessing - INFO - Download progress: 30.9%
+2025-11-04 15:22:45,711 - src.data_preprocessing - INFO - Download progress: 31.1%
+2025-11-04 15:22:45,860 - src.data_preprocessing - INFO - Download progress: 31.3%
+2025-11-04 15:22:46,045 - src.data_preprocessing - INFO - Download progress: 31.4%
+2025-11-04 15:22:46,241 - src.data_preprocessing - INFO - Download progress: 31.6%
+2025-11-04 15:22:46,434 - src.data_preprocessing - INFO - Download progress: 31.8%
+2025-11-04 15:22:46,623 - src.data_preprocessing - INFO - Download progress: 31.9%
+2025-11-04 15:22:46,810 - src.data_preprocessing - INFO - Download progress: 32.1%
+2025-11-04 15:22:46,999 - src.data_preprocessing - INFO - Download progress: 32.3%
+2025-11-04 15:22:47,178 - src.data_preprocessing - INFO - Download progress: 32.4%
+2025-11-04 15:22:47,366 - src.data_preprocessing - INFO - Download progress: 32.6%
+2025-11-04 15:22:47,543 - src.data_preprocessing - INFO - Download progress: 32.8%
+2025-11-04 15:22:47,724 - src.data_preprocessing - INFO - Download progress: 32.9%
+2025-11-04 15:22:47,898 - src.data_preprocessing - INFO - Download progress: 33.1%
+2025-11-04 15:22:48,082 - src.data_preprocessing - INFO - Download progress: 33.3%
+2025-11-04 15:22:48,265 - src.data_preprocessing - INFO - Download progress: 33.4%
+2025-11-04 15:22:48,514 - src.data_preprocessing - INFO - Download progress: 33.6%
+2025-11-04 15:22:48,758 - src.data_preprocessing - INFO - Download progress: 33.8%
+2025-11-04 15:22:49,002 - src.data_preprocessing - INFO - Download progress: 33.9%
+2025-11-04 15:22:49,264 - src.data_preprocessing - INFO - Download progress: 34.1%
+2025-11-04 15:22:49,590 - src.data_preprocessing - INFO - Download progress: 34.3%
+2025-11-04 15:22:49,907 - src.data_preprocessing - INFO - Download progress: 34.4%
+2025-11-04 15:22:50,212 - src.data_preprocessing - INFO - Download progress: 34.6%
+2025-11-04 15:22:50,518 - src.data_preprocessing - INFO - Download progress: 34.8%
+2025-11-04 15:22:50,816 - src.data_preprocessing - INFO - Download progress: 34.9%
+2025-11-04 15:22:51,108 - src.data_preprocessing - INFO - Download progress: 35.1%
+2025-11-04 15:22:51,404 - src.data_preprocessing - INFO - Download progress: 35.3%
+2025-11-04 15:22:51,686 - src.data_preprocessing - INFO - Download progress: 35.4%
+2025-11-04 15:22:51,968 - src.data_preprocessing - INFO - Download progress: 35.6%
+2025-11-04 15:22:52,255 - src.data_preprocessing - INFO - Download progress: 35.8%
+2025-11-04 15:22:52,542 - src.data_preprocessing - INFO - Download progress: 35.9%
+2025-11-04 15:22:52,819 - src.data_preprocessing - INFO - Download progress: 36.1%
+2025-11-04 15:22:53,101 - src.data_preprocessing - INFO - Download progress: 36.3%
+2025-11-04 15:22:53,379 - src.data_preprocessing - INFO - Download progress: 36.4%
+2025-11-04 15:22:53,657 - src.data_preprocessing - INFO - Download progress: 36.6%
+2025-11-04 15:22:53,929 - src.data_preprocessing - INFO - Download progress: 36.8%
+2025-11-04 15:22:54,188 - src.data_preprocessing - INFO - Download progress: 36.9%
+2025-11-04 15:22:54,463 - src.data_preprocessing - INFO - Download progress: 37.1%
+2025-11-04 15:22:54,741 - src.data_preprocessing - INFO - Download progress: 37.3%
+2025-11-04 15:22:55,012 - src.data_preprocessing - INFO - Download progress: 37.4%
+2025-11-04 15:22:55,277 - src.data_preprocessing - INFO - Download progress: 37.6%
+2025-11-04 15:22:55,547 - src.data_preprocessing - INFO - Download progress: 37.8%
+2025-11-04 15:22:55,822 - src.data_preprocessing - INFO - Download progress: 37.9%
+2025-11-04 15:22:56,083 - src.data_preprocessing - INFO - Download progress: 38.1%
+2025-11-04 15:22:56,351 - src.data_preprocessing - INFO - Download progress: 38.3%
+2025-11-04 15:22:56,604 - src.data_preprocessing - INFO - Download progress: 38.4%
+2025-11-04 15:22:56,875 - src.data_preprocessing - INFO - Download progress: 38.6%
+2025-11-04 15:22:57,128 - src.data_preprocessing - INFO - Download progress: 38.8%
+2025-11-04 15:22:57,379 - src.data_preprocessing - INFO - Download progress: 38.9%
+2025-11-04 15:22:57,630 - src.data_preprocessing - INFO - Download progress: 39.1%
+2025-11-04 15:22:57,882 - src.data_preprocessing - INFO - Download progress: 39.3%
+2025-11-04 15:22:58,139 - src.data_preprocessing - INFO - Download progress: 39.4%
+2025-11-04 15:22:58,475 - src.data_preprocessing - INFO - Download progress: 39.6%
+2025-11-04 15:22:58,810 - src.data_preprocessing - INFO - Download progress: 39.8%
+2025-11-04 15:22:59,119 - src.data_preprocessing - INFO - Download progress: 39.9%
+2025-11-04 15:22:59,426 - src.data_preprocessing - INFO - Download progress: 40.1%
+2025-11-04 15:22:59,732 - src.data_preprocessing - INFO - Download progress: 40.3%
+2025-11-04 15:23:00,015 - src.data_preprocessing - INFO - Download progress: 40.4%
+2025-11-04 15:23:00,324 - src.data_preprocessing - INFO - Download progress: 40.6%
+2025-11-04 15:23:00,717 - src.data_preprocessing - INFO - Download progress: 40.8%
+2025-11-04 15:23:01,106 - src.data_preprocessing - INFO - Download progress: 40.9%
+2025-11-04 15:23:01,472 - src.data_preprocessing - INFO - Download progress: 41.1%
+2025-11-04 15:23:01,846 - src.data_preprocessing - INFO - Download progress: 41.3%
+2025-11-04 15:23:02,201 - src.data_preprocessing - INFO - Download progress: 41.4%
+2025-11-04 15:23:02,559 - src.data_preprocessing - INFO - Download progress: 41.6%
+2025-11-04 15:23:02,936 - src.data_preprocessing - INFO - Download progress: 41.8%
+2025-11-04 15:23:03,272 - src.data_preprocessing - INFO - Download progress: 41.9%
+2025-11-04 15:23:03,610 - src.data_preprocessing - INFO - Download progress: 42.1%
+2025-11-04 15:23:03,945 - src.data_preprocessing - INFO - Download progress: 42.3%
+2025-11-04 15:23:04,282 - src.data_preprocessing - INFO - Download progress: 42.4%
+2025-11-04 15:23:04,618 - src.data_preprocessing - INFO - Download progress: 42.6%
+2025-11-04 15:23:04,954 - src.data_preprocessing - INFO - Download progress: 42.8%
+2025-11-04 15:23:05,265 - src.data_preprocessing - INFO - Download progress: 42.9%
+2025-11-04 15:23:05,600 - src.data_preprocessing - INFO - Download progress: 43.1%
+2025-11-04 15:23:05,909 - src.data_preprocessing - INFO - Download progress: 43.3%
+2025-11-04 15:23:06,243 - src.data_preprocessing - INFO - Download progress: 43.4%
+2025-11-04 15:23:06,552 - src.data_preprocessing - INFO - Download progress: 43.6%
+2025-11-04 15:23:06,860 - src.data_preprocessing - INFO - Download progress: 43.8%
+2025-11-04 15:23:07,167 - src.data_preprocessing - INFO - Download progress: 43.9%
+2025-11-04 15:23:07,475 - src.data_preprocessing - INFO - Download progress: 44.1%
+2025-11-04 15:23:07,823 - src.data_preprocessing - INFO - Download progress: 44.3%
+2025-11-04 15:23:08,105 - src.data_preprocessing - INFO - Download progress: 44.4%
+2025-11-04 15:23:08,411 - src.data_preprocessing - INFO - Download progress: 44.6%
+2025-11-04 15:23:08,732 - src.data_preprocessing - INFO - Download progress: 44.8%
+2025-11-04 15:23:09,124 - src.data_preprocessing - INFO - Download progress: 44.9%
+2025-11-04 15:23:09,514 - src.data_preprocessing - INFO - Download progress: 45.1%
+2025-11-04 15:23:09,877 - src.data_preprocessing - INFO - Download progress: 45.3%
+2025-11-04 15:23:10,216 - src.data_preprocessing - INFO - Download progress: 45.4%
+2025-11-04 15:23:10,575 - src.data_preprocessing - INFO - Download progress: 45.6%
+2025-11-04 15:23:10,898 - src.data_preprocessing - INFO - Download progress: 45.8%
+2025-11-04 15:23:11,219 - src.data_preprocessing - INFO - Download progress: 45.9%
+2025-11-04 15:23:11,542 - src.data_preprocessing - INFO - Download progress: 46.1%
+2025-11-04 15:23:11,860 - src.data_preprocessing - INFO - Download progress: 46.3%
+2025-11-04 15:23:12,167 - src.data_preprocessing - INFO - Download progress: 46.4%
+2025-11-04 15:23:12,469 - src.data_preprocessing - INFO - Download progress: 46.6%
+2025-11-04 15:23:12,777 - src.data_preprocessing - INFO - Download progress: 46.8%
+2025-11-04 15:23:13,082 - src.data_preprocessing - INFO - Download progress: 46.9%
+2025-11-04 15:23:13,382 - src.data_preprocessing - INFO - Download progress: 47.1%
+2025-11-04 15:23:13,670 - src.data_preprocessing - INFO - Download progress: 47.2%
+2025-11-04 15:23:13,969 - src.data_preprocessing - INFO - Download progress: 47.4%
+2025-11-04 15:23:14,260 - src.data_preprocessing - INFO - Download progress: 47.6%
+2025-11-04 15:23:14,557 - src.data_preprocessing - INFO - Download progress: 47.7%
+2025-11-04 15:23:14,847 - src.data_preprocessing - INFO - Download progress: 47.9%
+2025-11-04 15:23:15,179 - src.data_preprocessing - INFO - Download progress: 48.1%
+2025-11-04 15:23:15,576 - src.data_preprocessing - INFO - Download progress: 48.2%
+2025-11-04 15:23:15,960 - src.data_preprocessing - INFO - Download progress: 48.4%
+2025-11-04 15:23:16,322 - src.data_preprocessing - INFO - Download progress: 48.6%
+2025-11-04 15:23:16,674 - src.data_preprocessing - INFO - Download progress: 48.7%
+2025-11-04 15:23:17,016 - src.data_preprocessing - INFO - Download progress: 48.9%
+2025-11-04 15:23:17,348 - src.data_preprocessing - INFO - Download progress: 49.1%
+2025-11-04 15:23:17,668 - src.data_preprocessing - INFO - Download progress: 49.2%
+2025-11-04 15:23:17,985 - src.data_preprocessing - INFO - Download progress: 49.4%
+2025-11-04 15:23:18,299 - src.data_preprocessing - INFO - Download progress: 49.6%
+2025-11-04 15:23:18,604 - src.data_preprocessing - INFO - Download progress: 49.7%
+2025-11-04 15:23:18,914 - src.data_preprocessing - INFO - Download progress: 49.9%
+2025-11-04 15:23:19,221 - src.data_preprocessing - INFO - Download progress: 50.1%
+2025-11-04 15:23:19,545 - src.data_preprocessing - INFO - Download progress: 50.2%
+2025-11-04 15:23:19,934 - src.data_preprocessing - INFO - Download progress: 50.4%
+2025-11-04 15:23:20,341 - src.data_preprocessing - INFO - Download progress: 50.6%
+2025-11-04 15:23:20,733 - src.data_preprocessing - INFO - Download progress: 50.7%
+2025-11-04 15:23:21,117 - src.data_preprocessing - INFO - Download progress: 50.9%
+2025-11-04 15:23:21,488 - src.data_preprocessing - INFO - Download progress: 51.1%
+2025-11-04 15:23:21,860 - src.data_preprocessing - INFO - Download progress: 51.2%
+2025-11-04 15:23:22,229 - src.data_preprocessing - INFO - Download progress: 51.4%
+2025-11-04 15:23:22,591 - src.data_preprocessing - INFO - Download progress: 51.6%
+2025-11-04 15:23:22,944 - src.data_preprocessing - INFO - Download progress: 51.7%
+2025-11-04 15:23:23,296 - src.data_preprocessing - INFO - Download progress: 51.9%
+2025-11-04 15:23:23,651 - src.data_preprocessing - INFO - Download progress: 52.1%
+2025-11-04 15:23:24,003 - src.data_preprocessing - INFO - Download progress: 52.2%
+2025-11-04 15:23:24,354 - src.data_preprocessing - INFO - Download progress: 52.4%
+2025-11-04 15:23:24,701 - src.data_preprocessing - INFO - Download progress: 52.6%
+2025-11-04 15:23:25,041 - src.data_preprocessing - INFO - Download progress: 52.7%
+2025-11-04 15:23:25,377 - src.data_preprocessing - INFO - Download progress: 52.9%
+2025-11-04 15:23:25,716 - src.data_preprocessing - INFO - Download progress: 53.1%
+2025-11-04 15:23:26,041 - src.data_preprocessing - INFO - Download progress: 53.2%
+2025-11-04 15:23:26,363 - src.data_preprocessing - INFO - Download progress: 53.4%
+2025-11-04 15:23:26,684 - src.data_preprocessing - INFO - Download progress: 53.6%
+2025-11-04 15:23:27,004 - src.data_preprocessing - INFO - Download progress: 53.7%
+2025-11-04 15:23:27,316 - src.data_preprocessing - INFO - Download progress: 53.9%
+2025-11-04 15:23:27,628 - src.data_preprocessing - INFO - Download progress: 54.1%
+2025-11-04 15:23:27,934 - src.data_preprocessing - INFO - Download progress: 54.2%
+2025-11-04 15:23:28,245 - src.data_preprocessing - INFO - Download progress: 54.4%
+2025-11-04 15:23:28,537 - src.data_preprocessing - INFO - Download progress: 54.6%
+2025-11-04 15:23:28,836 - src.data_preprocessing - INFO - Download progress: 54.7%
+2025-11-04 15:23:29,130 - src.data_preprocessing - INFO - Download progress: 54.9%
+2025-11-04 15:23:29,424 - src.data_preprocessing - INFO - Download progress: 55.1%
+2025-11-04 15:23:29,708 - src.data_preprocessing - INFO - Download progress: 55.2%
+2025-11-04 15:23:29,999 - src.data_preprocessing - INFO - Download progress: 55.4%
+2025-11-04 15:23:30,287 - src.data_preprocessing - INFO - Download progress: 55.6%
+2025-11-04 15:23:30,569 - src.data_preprocessing - INFO - Download progress: 55.7%
+2025-11-04 15:23:30,848 - src.data_preprocessing - INFO - Download progress: 55.9%
+2025-11-04 15:23:31,123 - src.data_preprocessing - INFO - Download progress: 56.1%
+2025-11-04 15:23:31,385 - src.data_preprocessing - INFO - Download progress: 56.2%
+2025-11-04 15:23:31,663 - src.data_preprocessing - INFO - Download progress: 56.4%
+2025-11-04 15:23:31,940 - src.data_preprocessing - INFO - Download progress: 56.6%
+2025-11-04 15:23:32,197 - src.data_preprocessing - INFO - Download progress: 56.7%
+2025-11-04 15:23:32,470 - src.data_preprocessing - INFO - Download progress: 56.9%
+2025-11-04 15:23:32,725 - src.data_preprocessing - INFO - Download progress: 57.1%
+2025-11-04 15:23:32,993 - src.data_preprocessing - INFO - Download progress: 57.2%
+2025-11-04 15:23:33,251 - src.data_preprocessing - INFO - Download progress: 57.4%
+2025-11-04 15:23:33,501 - src.data_preprocessing - INFO - Download progress: 57.6%
+2025-11-04 15:23:33,733 - src.data_preprocessing - INFO - Download progress: 57.7%
+2025-11-04 15:23:33,978 - src.data_preprocessing - INFO - Download progress: 57.9%
+2025-11-04 15:23:34,202 - src.data_preprocessing - INFO - Download progress: 58.1%
+2025-11-04 15:23:34,425 - src.data_preprocessing - INFO - Download progress: 58.2%
+2025-11-04 15:23:34,647 - src.data_preprocessing - INFO - Download progress: 58.4%
+2025-11-04 15:23:34,846 - src.data_preprocessing - INFO - Download progress: 58.6%
+2025-11-04 15:23:35,057 - src.data_preprocessing - INFO - Download progress: 58.7%
+2025-11-04 15:23:35,257 - src.data_preprocessing - INFO - Download progress: 58.9%
+2025-11-04 15:23:35,451 - src.data_preprocessing - INFO - Download progress: 59.1%
+2025-11-04 15:23:35,633 - src.data_preprocessing - INFO - Download progress: 59.2%
+2025-11-04 15:23:35,824 - src.data_preprocessing - INFO - Download progress: 59.4%
+2025-11-04 15:23:36,003 - src.data_preprocessing - INFO - Download progress: 59.6%
+2025-11-04 15:23:36,184 - src.data_preprocessing - INFO - Download progress: 59.7%
+2025-11-04 15:23:36,352 - src.data_preprocessing - INFO - Download progress: 59.9%
+2025-11-04 15:23:36,520 - src.data_preprocessing - INFO - Download progress: 60.1%
+2025-11-04 15:23:36,677 - src.data_preprocessing - INFO - Download progress: 60.2%
+2025-11-04 15:23:36,834 - src.data_preprocessing - INFO - Download progress: 60.4%
+2025-11-04 15:23:36,993 - src.data_preprocessing - INFO - Download progress: 60.6%
+2025-11-04 15:23:37,142 - src.data_preprocessing - INFO - Download progress: 60.7%
+2025-11-04 15:23:37,288 - src.data_preprocessing - INFO - Download progress: 60.9%
+2025-11-04 15:23:37,438 - src.data_preprocessing - INFO - Download progress: 61.1%
+2025-11-04 15:23:37,583 - src.data_preprocessing - INFO - Download progress: 61.2%
+2025-11-04 15:23:37,714 - src.data_preprocessing - INFO - Download progress: 61.4%
+2025-11-04 15:23:37,852 - src.data_preprocessing - INFO - Download progress: 61.6%
+2025-11-04 15:23:37,986 - src.data_preprocessing - INFO - Download progress: 61.7%
+2025-11-04 15:23:38,120 - src.data_preprocessing - INFO - Download progress: 61.9%
+2025-11-04 15:23:38,245 - src.data_preprocessing - INFO - Download progress: 62.1%
+2025-11-04 15:23:38,374 - src.data_preprocessing - INFO - Download progress: 62.2%
+2025-11-04 15:23:38,495 - src.data_preprocessing - INFO - Download progress: 62.4%
+2025-11-04 15:23:38,614 - src.data_preprocessing - INFO - Download progress: 62.6%
+2025-11-04 15:23:38,737 - src.data_preprocessing - INFO - Download progress: 62.7%
+2025-11-04 15:23:38,853 - src.data_preprocessing - INFO - Download progress: 62.9%
+2025-11-04 15:23:38,968 - src.data_preprocessing - INFO - Download progress: 63.1%
+2025-11-04 15:23:39,081 - src.data_preprocessing - INFO - Download progress: 63.2%
+2025-11-04 15:23:39,191 - src.data_preprocessing - INFO - Download progress: 63.4%
+2025-11-04 15:23:39,301 - src.data_preprocessing - INFO - Download progress: 63.6%
+2025-11-04 15:23:39,409 - src.data_preprocessing - INFO - Download progress: 63.7%
+2025-11-04 15:23:39,515 - src.data_preprocessing - INFO - Download progress: 63.9%
+2025-11-04 15:23:39,615 - src.data_preprocessing - INFO - Download progress: 64.1%
+2025-11-04 15:23:39,721 - src.data_preprocessing - INFO - Download progress: 64.2%
+2025-11-04 15:23:39,822 - src.data_preprocessing - INFO - Download progress: 64.4%
+2025-11-04 15:23:39,922 - src.data_preprocessing - INFO - Download progress: 64.6%
+2025-11-04 15:23:40,020 - src.data_preprocessing - INFO - Download progress: 64.7%
+2025-11-04 15:23:40,115 - src.data_preprocessing - INFO - Download progress: 64.9%
+2025-11-04 15:23:40,209 - src.data_preprocessing - INFO - Download progress: 65.1%
+2025-11-04 15:23:40,305 - src.data_preprocessing - INFO - Download progress: 65.2%
+2025-11-04 15:23:40,396 - src.data_preprocessing - INFO - Download progress: 65.4%
+2025-11-04 15:23:40,486 - src.data_preprocessing - INFO - Download progress: 65.6%
+2025-11-04 15:23:40,579 - src.data_preprocessing - INFO - Download progress: 65.7%
+2025-11-04 15:23:40,667 - src.data_preprocessing - INFO - Download progress: 65.9%
+2025-11-04 15:23:40,754 - src.data_preprocessing - INFO - Download progress: 66.0%
+2025-11-04 15:23:40,840 - src.data_preprocessing - INFO - Download progress: 66.2%
+2025-11-04 15:23:40,927 - src.data_preprocessing - INFO - Download progress: 66.4%
+2025-11-04 15:23:41,010 - src.data_preprocessing - INFO - Download progress: 66.5%
+2025-11-04 15:23:41,093 - src.data_preprocessing - INFO - Download progress: 66.7%
+2025-11-04 15:23:41,175 - src.data_preprocessing - INFO - Download progress: 66.9%
+2025-11-04 15:23:41,262 - src.data_preprocessing - INFO - Download progress: 67.0%
+2025-11-04 15:23:41,340 - src.data_preprocessing - INFO - Download progress: 67.2%
+2025-11-04 15:23:41,418 - src.data_preprocessing - INFO - Download progress: 67.4%
+2025-11-04 15:23:41,498 - src.data_preprocessing - INFO - Download progress: 67.5%
+2025-11-04 15:23:41,579 - src.data_preprocessing - INFO - Download progress: 67.7%
+2025-11-04 15:23:41,664 - src.data_preprocessing - INFO - Download progress: 67.9%
+2025-11-04 15:23:41,736 - src.data_preprocessing - INFO - Download progress: 68.0%
+2025-11-04 15:23:41,820 - src.data_preprocessing - INFO - Download progress: 68.2%
+2025-11-04 15:23:41,926 - src.data_preprocessing - INFO - Download progress: 68.4%
+2025-11-04 15:23:42,027 - src.data_preprocessing - INFO - Download progress: 68.5%
+2025-11-04 15:23:42,136 - src.data_preprocessing - INFO - Download progress: 68.7%
+2025-11-04 15:23:42,246 - src.data_preprocessing - INFO - Download progress: 68.9%
+2025-11-04 15:23:42,336 - src.data_preprocessing - INFO - Download progress: 69.0%
+2025-11-04 15:23:42,444 - src.data_preprocessing - INFO - Download progress: 69.2%
+2025-11-04 15:23:42,537 - src.data_preprocessing - INFO - Download progress: 69.4%
+2025-11-04 15:23:42,640 - src.data_preprocessing - INFO - Download progress: 69.5%
+2025-11-04 15:23:42,763 - src.data_preprocessing - INFO - Download progress: 69.7%
+2025-11-04 15:23:42,869 - src.data_preprocessing - INFO - Download progress: 69.9%
+2025-11-04 15:23:42,957 - src.data_preprocessing - INFO - Download progress: 70.0%
+2025-11-04 15:23:43,045 - src.data_preprocessing - INFO - Download progress: 70.2%
+2025-11-04 15:23:43,152 - src.data_preprocessing - INFO - Download progress: 70.4%
+2025-11-04 15:23:43,239 - src.data_preprocessing - INFO - Download progress: 70.5%
+2025-11-04 15:23:43,325 - src.data_preprocessing - INFO - Download progress: 70.7%
+2025-11-04 15:23:43,431 - src.data_preprocessing - INFO - Download progress: 70.9%
+2025-11-04 15:23:43,518 - src.data_preprocessing - INFO - Download progress: 71.0%
+2025-11-04 15:23:43,604 - src.data_preprocessing - INFO - Download progress: 71.2%
+2025-11-04 15:23:43,691 - src.data_preprocessing - INFO - Download progress: 71.4%
+2025-11-04 15:23:43,796 - src.data_preprocessing - INFO - Download progress: 71.5%
+2025-11-04 15:23:43,882 - src.data_preprocessing - INFO - Download progress: 71.7%
+2025-11-04 15:23:43,968 - src.data_preprocessing - INFO - Download progress: 71.9%
+2025-11-04 15:23:44,054 - src.data_preprocessing - INFO - Download progress: 72.0%
+2025-11-04 15:23:44,141 - src.data_preprocessing - INFO - Download progress: 72.2%
+2025-11-04 15:23:44,226 - src.data_preprocessing - INFO - Download progress: 72.4%
+2025-11-04 15:23:44,313 - src.data_preprocessing - INFO - Download progress: 72.5%
+2025-11-04 15:23:44,413 - src.data_preprocessing - INFO - Download progress: 72.7%
+2025-11-04 15:23:44,499 - src.data_preprocessing - INFO - Download progress: 72.9%
+2025-11-04 15:23:44,585 - src.data_preprocessing - INFO - Download progress: 73.0%
+2025-11-04 15:23:44,670 - src.data_preprocessing - INFO - Download progress: 73.2%
+2025-11-04 15:23:44,755 - src.data_preprocessing - INFO - Download progress: 73.4%
+2025-11-04 15:23:44,839 - src.data_preprocessing - INFO - Download progress: 73.5%
+2025-11-04 15:23:44,924 - src.data_preprocessing - INFO - Download progress: 73.7%
+2025-11-04 15:23:45,008 - src.data_preprocessing - INFO - Download progress: 73.9%
+2025-11-04 15:23:45,091 - src.data_preprocessing - INFO - Download progress: 74.0%
+2025-11-04 15:23:45,175 - src.data_preprocessing - INFO - Download progress: 74.2%
+2025-11-04 15:23:45,259 - src.data_preprocessing - INFO - Download progress: 74.4%
+2025-11-04 15:23:45,342 - src.data_preprocessing - INFO - Download progress: 74.5%
+2025-11-04 15:23:45,426 - src.data_preprocessing - INFO - Download progress: 74.7%
+2025-11-04 15:23:45,508 - src.data_preprocessing - INFO - Download progress: 74.9%
+2025-11-04 15:23:45,591 - src.data_preprocessing - INFO - Download progress: 75.0%
+2025-11-04 15:23:45,674 - src.data_preprocessing - INFO - Download progress: 75.2%
+2025-11-04 15:23:45,756 - src.data_preprocessing - INFO - Download progress: 75.4%
+2025-11-04 15:23:45,837 - src.data_preprocessing - INFO - Download progress: 75.5%
+2025-11-04 15:23:45,911 - src.data_preprocessing - INFO - Download progress: 75.7%
+2025-11-04 15:23:45,995 - src.data_preprocessing - INFO - Download progress: 75.9%
+2025-11-04 15:23:46,080 - src.data_preprocessing - INFO - Download progress: 76.0%
+2025-11-04 15:23:46,166 - src.data_preprocessing - INFO - Download progress: 76.2%
+2025-11-04 15:23:46,249 - src.data_preprocessing - INFO - Download progress: 76.4%
+2025-11-04 15:23:46,332 - src.data_preprocessing - INFO - Download progress: 76.5%
+2025-11-04 15:23:46,412 - src.data_preprocessing - INFO - Download progress: 76.7%
+2025-11-04 15:23:46,489 - src.data_preprocessing - INFO - Download progress: 76.9%
+2025-11-04 15:23:46,575 - src.data_preprocessing - INFO - Download progress: 77.0%
+2025-11-04 15:23:46,657 - src.data_preprocessing - INFO - Download progress: 77.2%
+2025-11-04 15:23:46,740 - src.data_preprocessing - INFO - Download progress: 77.4%
+2025-11-04 15:23:46,817 - src.data_preprocessing - INFO - Download progress: 77.5%
+2025-11-04 15:23:46,893 - src.data_preprocessing - INFO - Download progress: 77.7%
+2025-11-04 15:23:46,978 - src.data_preprocessing - INFO - Download progress: 77.9%
+2025-11-04 15:23:47,063 - src.data_preprocessing - INFO - Download progress: 78.0%
+2025-11-04 15:23:47,147 - src.data_preprocessing - INFO - Download progress: 78.2%
+2025-11-04 15:23:47,226 - src.data_preprocessing - INFO - Download progress: 78.4%
+2025-11-04 15:23:47,312 - src.data_preprocessing - INFO - Download progress: 78.5%
+2025-11-04 15:23:47,397 - src.data_preprocessing - INFO - Download progress: 78.7%
+2025-11-04 15:23:47,472 - src.data_preprocessing - INFO - Download progress: 78.9%
+2025-11-04 15:23:47,553 - src.data_preprocessing - INFO - Download progress: 79.0%
+2025-11-04 15:23:47,636 - src.data_preprocessing - INFO - Download progress: 79.2%
+2025-11-04 15:23:47,710 - src.data_preprocessing - INFO - Download progress: 79.4%
+2025-11-04 15:23:47,795 - src.data_preprocessing - INFO - Download progress: 79.5%
+2025-11-04 15:23:47,878 - src.data_preprocessing - INFO - Download progress: 79.7%
+2025-11-04 15:23:47,956 - src.data_preprocessing - INFO - Download progress: 79.9%
+2025-11-04 15:23:48,033 - src.data_preprocessing - INFO - Download progress: 80.0%
+2025-11-04 15:23:48,119 - src.data_preprocessing - INFO - Download progress: 80.2%
+2025-11-04 15:23:48,204 - src.data_preprocessing - INFO - Download progress: 80.4%
+2025-11-04 15:23:48,279 - src.data_preprocessing - INFO - Download progress: 80.5%
+2025-11-04 15:23:48,405 - src.data_preprocessing - INFO - Download progress: 80.7%
+2025-11-04 15:23:48,498 - src.data_preprocessing - INFO - Download progress: 80.9%
+2025-11-04 15:23:48,608 - src.data_preprocessing - INFO - Download progress: 81.0%
+2025-11-04 15:23:48,721 - src.data_preprocessing - INFO - Download progress: 81.2%
+2025-11-04 15:23:48,830 - src.data_preprocessing - INFO - Download progress: 81.4%
+2025-11-04 15:23:48,940 - src.data_preprocessing - INFO - Download progress: 81.5%
+2025-11-04 15:23:49,030 - src.data_preprocessing - INFO - Download progress: 81.7%
+2025-11-04 15:23:49,140 - src.data_preprocessing - INFO - Download progress: 81.9%
+2025-11-04 15:23:49,249 - src.data_preprocessing - INFO - Download progress: 82.0%
+2025-11-04 15:23:49,340 - src.data_preprocessing - INFO - Download progress: 82.2%
+2025-11-04 15:23:49,449 - src.data_preprocessing - INFO - Download progress: 82.4%
+2025-11-04 15:23:49,556 - src.data_preprocessing - INFO - Download progress: 82.5%
+2025-11-04 15:23:49,646 - src.data_preprocessing - INFO - Download progress: 82.7%
+2025-11-04 15:23:49,755 - src.data_preprocessing - INFO - Download progress: 82.9%
+2025-11-04 15:23:49,858 - src.data_preprocessing - INFO - Download progress: 83.0%
+2025-11-04 15:23:49,952 - src.data_preprocessing - INFO - Download progress: 83.2%
+2025-11-04 15:23:50,059 - src.data_preprocessing - INFO - Download progress: 83.4%
+2025-11-04 15:23:50,150 - src.data_preprocessing - INFO - Download progress: 83.5%
+2025-11-04 15:23:50,256 - src.data_preprocessing - INFO - Download progress: 83.7%
+2025-11-04 15:23:50,347 - src.data_preprocessing - INFO - Download progress: 83.9%
+2025-11-04 15:23:50,451 - src.data_preprocessing - INFO - Download progress: 84.0%
+2025-11-04 15:23:50,543 - src.data_preprocessing - INFO - Download progress: 84.2%
+2025-11-04 15:23:50,649 - src.data_preprocessing - INFO - Download progress: 84.4%
+2025-11-04 15:23:50,739 - src.data_preprocessing - INFO - Download progress: 84.5%
+2025-11-04 15:23:50,842 - src.data_preprocessing - INFO - Download progress: 84.7%
+2025-11-04 15:23:50,932 - src.data_preprocessing - INFO - Download progress: 84.8%
+2025-11-04 15:23:51,034 - src.data_preprocessing - INFO - Download progress: 85.0%
+2025-11-04 15:23:51,127 - src.data_preprocessing - INFO - Download progress: 85.2%
+2025-11-04 15:23:51,217 - src.data_preprocessing - INFO - Download progress: 85.3%
+2025-11-04 15:23:51,321 - src.data_preprocessing - INFO - Download progress: 85.5%
+2025-11-04 15:23:51,411 - src.data_preprocessing - INFO - Download progress: 85.7%
+2025-11-04 15:23:51,513 - src.data_preprocessing - INFO - Download progress: 85.8%
+2025-11-04 15:23:51,604 - src.data_preprocessing - INFO - Download progress: 86.0%
+2025-11-04 15:23:51,697 - src.data_preprocessing - INFO - Download progress: 86.2%
+2025-11-04 15:23:51,796 - src.data_preprocessing - INFO - Download progress: 86.3%
+2025-11-04 15:23:51,884 - src.data_preprocessing - INFO - Download progress: 86.5%
+2025-11-04 15:23:51,979 - src.data_preprocessing - INFO - Download progress: 86.7%
+2025-11-04 15:23:52,076 - src.data_preprocessing - INFO - Download progress: 86.8%
+2025-11-04 15:23:52,164 - src.data_preprocessing - INFO - Download progress: 87.0%
+2025-11-04 15:23:52,257 - src.data_preprocessing - INFO - Download progress: 87.2%
+2025-11-04 15:23:52,357 - src.data_preprocessing - INFO - Download progress: 87.3%
+2025-11-04 15:23:52,445 - src.data_preprocessing - INFO - Download progress: 87.5%
+2025-11-04 15:23:52,536 - src.data_preprocessing - INFO - Download progress: 87.7%
+2025-11-04 15:23:52,636 - src.data_preprocessing - INFO - Download progress: 87.8%
+2025-11-04 15:23:52,724 - src.data_preprocessing - INFO - Download progress: 88.0%
+2025-11-04 15:23:52,817 - src.data_preprocessing - INFO - Download progress: 88.2%
+2025-11-04 15:23:52,916 - src.data_preprocessing - INFO - Download progress: 88.3%
+2025-11-04 15:23:53,003 - src.data_preprocessing - INFO - Download progress: 88.5%
+2025-11-04 15:23:53,090 - src.data_preprocessing - INFO - Download progress: 88.7%
+2025-11-04 15:23:53,188 - src.data_preprocessing - INFO - Download progress: 88.8%
+2025-11-04 15:23:53,280 - src.data_preprocessing - INFO - Download progress: 89.0%
+2025-11-04 15:23:53,367 - src.data_preprocessing - INFO - Download progress: 89.2%
+2025-11-04 15:23:53,454 - src.data_preprocessing - INFO - Download progress: 89.3%
+2025-11-04 15:23:53,552 - src.data_preprocessing - INFO - Download progress: 89.5%
+2025-11-04 15:23:53,643 - src.data_preprocessing - INFO - Download progress: 89.7%
+2025-11-04 15:23:53,731 - src.data_preprocessing - INFO - Download progress: 89.8%
+2025-11-04 15:23:53,819 - src.data_preprocessing - INFO - Download progress: 90.0%
+2025-11-04 15:23:53,915 - src.data_preprocessing - INFO - Download progress: 90.2%
+2025-11-04 15:23:54,008 - src.data_preprocessing - INFO - Download progress: 90.3%
+2025-11-04 15:23:54,094 - src.data_preprocessing - INFO - Download progress: 90.5%
+2025-11-04 15:23:54,182 - src.data_preprocessing - INFO - Download progress: 90.7%
+2025-11-04 15:23:54,277 - src.data_preprocessing - INFO - Download progress: 90.8%
+2025-11-04 15:23:54,371 - src.data_preprocessing - INFO - Download progress: 91.0%
+2025-11-04 15:23:54,460 - src.data_preprocessing - INFO - Download progress: 91.2%
+2025-11-04 15:23:54,546 - src.data_preprocessing - INFO - Download progress: 91.3%
+2025-11-04 15:23:54,639 - src.data_preprocessing - INFO - Download progress: 91.5%
+2025-11-04 15:23:54,734 - src.data_preprocessing - INFO - Download progress: 91.7%
+2025-11-04 15:23:54,822 - src.data_preprocessing - INFO - Download progress: 91.8%
+2025-11-04 15:23:54,909 - src.data_preprocessing - INFO - Download progress: 92.0%
+2025-11-04 15:23:55,002 - src.data_preprocessing - INFO - Download progress: 92.2%
+2025-11-04 15:23:55,097 - src.data_preprocessing - INFO - Download progress: 92.3%
+2025-11-04 15:23:55,185 - src.data_preprocessing - INFO - Download progress: 92.5%
+2025-11-04 15:23:55,276 - src.data_preprocessing - INFO - Download progress: 92.7%
+2025-11-04 15:23:55,364 - src.data_preprocessing - INFO - Download progress: 92.8%
+2025-11-04 15:23:55,479 - src.data_preprocessing - INFO - Download progress: 93.0%
+2025-11-04 15:23:55,617 - src.data_preprocessing - INFO - Download progress: 93.2%
+2025-11-04 15:23:55,732 - src.data_preprocessing - INFO - Download progress: 93.3%
+2025-11-04 15:23:55,871 - src.data_preprocessing - INFO - Download progress: 93.5%
+2025-11-04 15:23:55,986 - src.data_preprocessing - INFO - Download progress: 93.7%
+2025-11-04 15:23:56,120 - src.data_preprocessing - INFO - Download progress: 93.8%
+2025-11-04 15:23:56,234 - src.data_preprocessing - INFO - Download progress: 94.0%
+2025-11-04 15:23:56,349 - src.data_preprocessing - INFO - Download progress: 94.2%
+2025-11-04 15:23:56,484 - src.data_preprocessing - INFO - Download progress: 94.3%
+2025-11-04 15:23:56,598 - src.data_preprocessing - INFO - Download progress: 94.5%
+2025-11-04 15:23:56,713 - src.data_preprocessing - INFO - Download progress: 94.7%
+2025-11-04 15:23:56,827 - src.data_preprocessing - INFO - Download progress: 94.8%
+2025-11-04 15:23:56,962 - src.data_preprocessing - INFO - Download progress: 95.0%
+2025-11-04 15:23:57,076 - src.data_preprocessing - INFO - Download progress: 95.2%
+2025-11-04 15:23:57,190 - src.data_preprocessing - INFO - Download progress: 95.3%
+2025-11-04 15:23:57,304 - src.data_preprocessing - INFO - Download progress: 95.5%
+2025-11-04 15:23:57,418 - src.data_preprocessing - INFO - Download progress: 95.7%
+2025-11-04 15:23:57,532 - src.data_preprocessing - INFO - Download progress: 95.8%
+2025-11-04 15:23:57,645 - src.data_preprocessing - INFO - Download progress: 96.0%
+2025-11-04 15:23:57,764 - src.data_preprocessing - INFO - Download progress: 96.2%
+2025-11-04 15:23:57,886 - src.data_preprocessing - INFO - Download progress: 96.3%
+2025-11-04 15:23:57,999 - src.data_preprocessing - INFO - Download progress: 96.5%
+2025-11-04 15:23:58,113 - src.data_preprocessing - INFO - Download progress: 96.7%
+2025-11-04 15:23:58,226 - src.data_preprocessing - INFO - Download progress: 96.8%
+2025-11-04 15:23:58,338 - src.data_preprocessing - INFO - Download progress: 97.0%
+2025-11-04 15:23:58,450 - src.data_preprocessing - INFO - Download progress: 97.2%
+2025-11-04 15:23:58,562 - src.data_preprocessing - INFO - Download progress: 97.3%
+2025-11-04 15:23:58,673 - src.data_preprocessing - INFO - Download progress: 97.5%
+2025-11-04 15:23:58,784 - src.data_preprocessing - INFO - Download progress: 97.7%
+2025-11-04 15:23:58,893 - src.data_preprocessing - INFO - Download progress: 97.8%
+2025-11-04 15:23:59,003 - src.data_preprocessing - INFO - Download progress: 98.0%
+2025-11-04 15:23:59,104 - src.data_preprocessing - INFO - Download progress: 98.2%
+2025-11-04 15:23:59,215 - src.data_preprocessing - INFO - Download progress: 98.3%
+2025-11-04 15:23:59,327 - src.data_preprocessing - INFO - Download progress: 98.5%
+2025-11-04 15:23:59,438 - src.data_preprocessing - INFO - Download progress: 98.7%
+2025-11-04 15:23:59,549 - src.data_preprocessing - INFO - Download progress: 98.8%
+2025-11-04 15:23:59,660 - src.data_preprocessing - INFO - Download progress: 99.0%
+2025-11-04 15:23:59,771 - src.data_preprocessing - INFO - Download progress: 99.2%
+2025-11-04 15:23:59,881 - src.data_preprocessing - INFO - Download progress: 99.3%
+2025-11-04 15:23:59,991 - src.data_preprocessing - INFO - Download progress: 99.5%
+2025-11-04 15:24:00,094 - src.data_preprocessing - INFO - Download progress: 99.7%
+2025-11-04 15:24:00,194 - src.data_preprocessing - INFO - Download progress: 99.8%
+2025-11-04 15:24:00,305 - src.data_preprocessing - INFO - Download progress: 100.0%
+2025-11-04 15:24:00,315 - src.data_preprocessing - INFO - Download complete. Extracting archive...
+2025-11-04 15:26:05,496 - src.data_preprocessing - INFO - Extracting 01001099999.csv...
+2025-11-04 15:26:05,503 - src.data_preprocessing - INFO - Uploading extracted CSV to HDFS: hdfs://pyspark-enhanced-m/user/weather_data/2024.csv
+2025-11-04 15:26:05,503 - src.data_preprocessing - INFO - Reading from local file: file:///tmp/tmpk7v7ysq5/01001099999.csv
+2025-11-04 15:26:10,680 - src.data_preprocessing - INFO - Data successfully uploaded to HDFS: hdfs://pyspark-enhanced-m/user/weather_data/2024.csv
+2025-11-04 15:26:11,253 - src.data_preprocessing - INFO - Temporary files cleaned up
+2025-11-04 15:26:11,256 - src.data_preprocessing - INFO - Loading data from: hdfs://pyspark-enhanced-m/user/weather_data/2024.csv
+2025-11-04 15:26:12,800 - src.data_preprocessing - INFO - Loaded 6,039 records
+2025-11-04 15:26:12,827 - src.data_preprocessing - INFO - Columns: STATION, DATE, SOURCE, LATITUDE, LONGITUDE, ELEVATION, NAME, REPORT_TYPE, CALL_SIGN, QUALITY_CONTROL, WND, CIG, VIS, TMP, DEW, SLP, AA1, AA2, AA3, AJ1, AY1, AY2, GA1, GA2, GA3, GE1, GF1, IA1, KA1, KA2, MA1, MD1, MW1, OC1, OD1, SA1, UA1, REM, EQD
+2025-11-04 15:26:12,827 - src.data_preprocessing - INFO - ============================================================
+2025-11-04 15:26:12,827 - src.data_preprocessing - INFO - STARTING DATA PREPROCESSING
+2025-11-04 15:26:12,827 - src.data_preprocessing - INFO - ============================================================
+2025-11-04 15:26:12,827 - src.data_preprocessing - INFO - Parsing weather data columns...
+2025-11-04 15:26:19,381 - src.data_preprocessing - INFO - Weather columns parsed successfully
+2025-11-04 15:26:19,394 - src.data_preprocessing - INFO - Renamed 'TMP_VALUE' to 'label' for MLlib compatibility
+2025-11-04 15:26:19,394 - src.data_preprocessing - INFO - Creating derived categorical features...
+2025-11-04 15:26:19,594 - src.data_preprocessing - INFO - Derived categorical features created:
+2025-11-04 15:26:19,594 - src.data_preprocessing - INFO -   - WND_DIRECTION_BIN: 8 compass directions (0-7)
+2025-11-04 15:26:19,594 - src.data_preprocessing - INFO -   - SEASON: 4 seasons (0-3)
+2025-11-04 15:26:19,594 - src.data_preprocessing - INFO -   - TIME_OF_DAY: 4 time periods (0-3)
+2025-11-04 15:26:19,594 - src.data_preprocessing - INFO - Handling missing values...
+2025-11-04 15:26:19,813 - src.data_preprocessing - INFO - 
+Analyzing missing values:
+2025-11-04 15:26:23,488 - src.data_preprocessing - INFO -   AA1: 8 missing (0.13%)
+2025-11-04 15:26:23,678 - src.data_preprocessing - INFO -   AA2: 5,224 missing (86.50%)
+2025-11-04 15:26:23,678 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:23,817 - src.data_preprocessing - INFO -   AA3: 5,860 missing (97.04%)
+2025-11-04 15:26:23,817 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,002 - src.data_preprocessing - INFO -   AJ1: 5,686 missing (94.15%)
+2025-11-04 15:26:24,003 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,155 - src.data_preprocessing - INFO -   AY1: 4,633 missing (76.72%)
+2025-11-04 15:26:24,155 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,287 - src.data_preprocessing - INFO -   AY2: 4,635 missing (76.75%)
+2025-11-04 15:26:24,288 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,490 - src.data_preprocessing - INFO -   GA1: 4,636 missing (76.77%)
+2025-11-04 15:26:24,490 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,659 - src.data_preprocessing - INFO -   GA2: 5,195 missing (86.02%)
+2025-11-04 15:26:24,659 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,791 - src.data_preprocessing - INFO -   GA3: 5,405 missing (89.50%)
+2025-11-04 15:26:24,791 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:24,908 - src.data_preprocessing - INFO -   GE1: 4,636 missing (76.77%)
+2025-11-04 15:26:24,908 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:25,051 - src.data_preprocessing - INFO -   GF1: 4,633 missing (76.72%)
+2025-11-04 15:26:25,052 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:25,223 - src.data_preprocessing - INFO -   IA1: 5,434 missing (89.98%)
+2025-11-04 15:26:25,223 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:25,758 - src.data_preprocessing - INFO -   MD1: 1 missing (0.02%)
+2025-11-04 15:26:25,908 - src.data_preprocessing - INFO -   MW1: 4,635 missing (76.75%)
+2025-11-04 15:26:25,908 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:26,094 - src.data_preprocessing - INFO -   OC1: 1,757 missing (29.09%)
+2025-11-04 15:26:26,094 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:26,330 - src.data_preprocessing - INFO -   SA1: 5,893 missing (97.58%)
+2025-11-04 15:26:26,331 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:26,441 - src.data_preprocessing - INFO -   UA1: 5,833 missing (96.59%)
+2025-11-04 15:26:26,441 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:26,716 - src.data_preprocessing - INFO -   EQD: 5,382 missing (89.12%)
+2025-11-04 15:26:26,716 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:29,849 - src.data_preprocessing - INFO -   SLP_PRESSURE: 1 missing (0.02%)
+2025-11-04 15:26:30,226 - src.data_preprocessing - INFO -   WND_DIRECTION: 4 missing (0.07%)
+2025-11-04 15:26:30,743 - src.data_preprocessing - INFO -   CIG_HEIGHT: 5,331 missing (88.28%)
+2025-11-04 15:26:30,744 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:31,010 - src.data_preprocessing - INFO -   VIS_DISTANCE: 4,633 missing (76.72%)
+2025-11-04 15:26:31,010 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:31,303 - src.data_preprocessing - INFO -   AA1_PERIOD: 5,171 missing (85.63%)
+2025-11-04 15:26:31,303 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:31,637 - src.data_preprocessing - INFO -   AA1_DEPTH: 4,268 missing (70.67%)
+2025-11-04 15:26:31,638 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:31,875 - src.data_preprocessing - INFO -   AA2_PERIOD: 5,709 missing (94.54%)
+2025-11-04 15:26:31,875 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:32,120 - src.data_preprocessing - INFO -   AA2_DEPTH: 5,570 missing (92.23%)
+2025-11-04 15:26:32,120 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:32,377 - src.data_preprocessing - INFO -   AA3_PERIOD: 5,894 missing (97.60%)
+2025-11-04 15:26:32,377 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:32,670 - src.data_preprocessing - INFO -   AA3_DEPTH: 5,887 missing (97.48%)
+2025-11-04 15:26:32,670 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:33,065 - src.data_preprocessing - INFO -   MA1_PRESSURE: 6,039 missing (100.00%)
+2025-11-04 15:26:33,065 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:33,362 - src.data_preprocessing - INFO -   MD1_TENDENCY: 42 missing (0.70%)
+2025-11-04 15:26:33,628 - src.data_preprocessing - INFO -   MD1_CHANGE_3HR: 1 missing (0.02%)
+2025-11-04 15:26:33,899 - src.data_preprocessing - INFO -   MW1_CONDITION: 4,635 missing (76.75%)
+2025-11-04 15:26:33,899 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:34,214 - src.data_preprocessing - INFO -   OC1_GUST_SPEED: 1,757 missing (29.09%)
+2025-11-04 15:26:34,214 - src.data_preprocessing - INFO -     -> Will be DROPPED (exceeds 20.0% threshold)
+2025-11-04 15:26:35,135 - src.data_preprocessing - INFO -   WND_DIRECTION_BIN: 4 missing (0.07%)
+2025-11-04 15:26:35,598 - src.data_preprocessing - INFO - 
+Dropping 27 columns with >20.0% missing values:
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA2
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA3
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AJ1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AY1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AY2
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - GA1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - GA2
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - GA3
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - GE1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - GF1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - IA1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - MW1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - OC1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - SA1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - UA1
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - EQD
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - CIG_HEIGHT
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - VIS_DISTANCE
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA1_PERIOD
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA1_DEPTH
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA2_PERIOD
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA2_DEPTH
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA3_PERIOD
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - AA3_DEPTH
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - MA1_PRESSURE
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - MW1_CONDITION
+2025-11-04 15:26:35,599 - src.data_preprocessing - INFO -   - OC1_GUST_SPEED
+2025-11-04 15:26:35,612 - src.data_preprocessing - INFO - 
+Filling remaining missing values:
+2025-11-04 15:26:37,789 - src.data_preprocessing - INFO -   SLP_PRESSURE: filled 1 missing values with mean (1006.45)
+2025-11-04 15:26:38,418 - src.data_preprocessing - INFO -   WND_DIRECTION: filled 4 missing values with mean (212.58)
+2025-11-04 15:26:39,452 - src.data_preprocessing - INFO -   MD1_TENDENCY: filled 42 missing values with mean (4.56)
+2025-11-04 15:26:40,051 - src.data_preprocessing - INFO -   MD1_CHANGE_3HR: filled 1 missing values with mean (1.09)
+2025-11-04 15:26:47,531 - src.data_preprocessing - INFO -   WND_DIRECTION_BIN: filled 4 missing values with mode (0)
+2025-11-04 15:26:47,971 - src.data_preprocessing - INFO - 
+Missing value handling complete. Final record count: 6,039
+2025-11-04 15:26:47,971 - src.data_preprocessing - INFO - Removing outliers using IQR method...
+2025-11-04 15:26:52,679 - src.data_preprocessing - INFO -   DEW_POINT: removed 25 outliers (bounds: -19.55 to 16.05)
+2025-11-04 15:26:53,988 - src.data_preprocessing - INFO -   SLP_PRESSURE: removed 129 outliers (bounds: 974.75 to 1039.95)
+2025-11-04 15:26:56,461 - src.data_preprocessing - INFO -   WND_SPEED: removed 27 outliers (bounds: -6.05 to 17.55)
+2025-11-04 15:26:58,730 - src.data_preprocessing - INFO -   MD1_CHANGE_3HR: removed 281 outliers (bounds: -1.35 to 3.05)
+2025-11-04 15:26:59,064 - src.data_preprocessing - INFO - Total outliers removed: 462 (7.65%)
+2025-11-04 15:26:59,064 - src.data_preprocessing - INFO - Encoding categorical features with one-hot encoding...
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO - Successfully encoded 12 categorical features:
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   STATION -> STATION_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   NAME -> NAME_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   CALL_SIGN -> CALL_SIGN_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   SOURCE -> SOURCE_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   REPORT_TYPE -> REPORT_TYPE_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   QUALITY_CONTROL -> QUALITY_CONTROL_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   HOUR -> HOUR_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   MONTH -> MONTH_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   DAY_OF_YEAR -> DAY_OF_YEAR_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   SEASON -> SEASON_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   TIME_OF_DAY -> TIME_OF_DAY_encoded
+2025-11-04 15:27:06,276 - src.data_preprocessing - INFO -   WND_DIRECTION_BIN -> WND_DIRECTION_BIN_encoded
+2025-11-04 15:27:06,566 - src.data_preprocessing - INFO - ============================================================
+2025-11-04 15:27:06,566 - src.data_preprocessing - INFO - PREPROCESSING COMPLETE: 5,577 records
+2025-11-04 15:27:06,566 - src.data_preprocessing - INFO - ============================================================
+2025-11-04 15:27:06,566 - src.utils - INFO - 
+============================================================
+2025-11-04 15:27:06,566 - src.utils - INFO - DATAFRAME AFTER PREPROCESSING
+2025-11-04 15:27:06,566 - src.utils - INFO - ============================================================
+2025-11-04 15:27:06,893 - src.utils - INFO - Number of rows: 5,577
+2025-11-04 15:27:06,948 - src.utils - INFO - Number of columns: 36
+2025-11-04 15:27:06,948 - src.utils - INFO - 
+Schema:
+2025-11-04 15:27:06,949 - src.utils - INFO - 
+First 50 rows:
+2025-11-04 15:27:08,192 - src.utils - INFO - ============================================================
+
+2025-11-04 15:27:08,192 - src.utils - INFO - Data preprocessing completed
+
+2025-11-04 15:27:08,192 - src.utils - INFO - STEP 3: Feature Engineering and Selection
+2025-11-04 15:27:08,192 - src.utils - INFO - --------------------------------------------------------------------------------
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO - ============================================================
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO - PERFORMING TYPE-AWARE UNIVARIATE FEATURE SELECTION
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO - ============================================================
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO - Total features: 21
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO -   - Continuous: 9
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO -   - Categorical: 12
+2025-11-04 15:27:08,192 - src.feature_engineering - INFO - 
+Creating separate feature vectors...
+2025-11-04 15:27:11,195 - src.feature_engineering - INFO -   Created continuous_features vector: 9 features
+2025-11-04 15:27:11,249 - src.feature_engineering - INFO -   Created categorical_features vector: 12 features
+2025-11-04 15:27:11,250 - src.feature_engineering - INFO - 
+------------------------------------------------------------
+2025-11-04 15:27:11,250 - src.feature_engineering - INFO - SELECTING CONTINUOUS FEATURES
+2025-11-04 15:27:11,250 - src.feature_engineering - INFO - ------------------------------------------------------------
+2025-11-04 15:27:12,284 - src.feature_engineering - INFO - Configuration:
+2025-11-04 15:27:12,284 - src.feature_engineering - INFO -   - Feature type: continuous
+2025-11-04 15:27:12,284 - src.feature_engineering - INFO -   - Label type: continuous
+2025-11-04 15:27:12,284 - src.feature_engineering - INFO -   - Selection mode: fpr
+2025-11-04 15:27:12,284 - src.feature_engineering - INFO -   - Threshold: 0.05
+2025-11-04 15:27:14,976 - src.feature_engineering - INFO - 
+Selected 6 continuous features
+2025-11-04 15:27:14,976 - src.feature_engineering - INFO - Selected indices: [3, 4, 5, 6, 7, 8]
+2025-11-04 15:27:14,976 - src.feature_engineering - INFO - Selected features: DEW_POINT, SLP_PRESSURE, WND_DIRECTION, WND_SPEED, MD1_TENDENCY, MD1_CHANGE_3HR
+2025-11-04 15:27:15,015 - src.feature_engineering - INFO - 
+Combining selected features...
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO - Combined features into final 'features' vector
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO - ============================================================
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO - FEATURE SELECTION COMPLETE
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO - Selected 6 out of 21 features
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO -   - Continuous: 6/9
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO -   - Reduction: 71.4%
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO - Feature selected: DEW_POINT, SLP_PRESSURE, WND_DIRECTION, WND_SPEED, MD1_TENDENCY, MD1_CHANGE_3HR
+2025-11-04 15:27:15,059 - src.feature_engineering - INFO - ============================================================
+2025-11-04 15:27:15,059 - src.utils - INFO - Feature engineering completed
+
+2025-11-04 15:27:15,095 - src.utils - INFO - STEP 4: Training Models
+2025-11-04 15:27:15,095 - src.utils - INFO - --------------------------------------------------------------------------------
+2025-11-04 15:27:15,095 - src.utils - INFO - Training all configured models: LinearRegression, RandomForestRegressor
+2025-11-04 15:27:15,096 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:15,096 - src.train_model - INFO - TRAINING 2 MODELS
+2025-11-04 15:27:15,096 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:15,096 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:15,096 - src.train_model - INFO - TRAINING MODEL: LinearRegression
+2025-11-04 15:27:15,096 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:15,096 - src.train_model - INFO - Creating model: LinearRegression
+2025-11-04 15:27:15,150 - src.train_model - INFO - Creating parameter grid for LinearRegression
+2025-11-04 15:27:15,150 - src.train_model - INFO - Created parameter grid with 9 combinations
+2025-11-04 15:27:17,024 - src.train_model - INFO - Starting 3-fold cross-validation...
+2025-11-04 15:27:17,024 - src.train_model - INFO - Testing 9 parameter combinations
+2025-11-04 15:27:35,611 - py4j.clientserver - INFO - Closing down clientserver connection
+2025-11-04 15:27:35,611 - py4j.clientserver - INFO - Closing down clientserver connection
+2025-11-04 15:27:35,613 - src.train_model - INFO - Training completed in 20.52 seconds
+2025-11-04 15:27:35,613 - src.train_model - INFO - Best cross-validation RMSE: 0.7381
+2025-11-04 15:27:35,614 - src.train_model - INFO - Best parameters (combination #2):
+2025-11-04 15:27:35,614 - src.train_model - INFO -   regParam: 0.01
+2025-11-04 15:27:35,614 - src.train_model - INFO -   elasticNetParam: 0.5
+2025-11-04 15:27:35,614 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:35,614 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:35,614 - src.train_model - INFO - TRAINING MODEL: RandomForestRegressor
+2025-11-04 15:27:35,614 - src.train_model - INFO - ============================================================
+2025-11-04 15:27:35,614 - src.train_model - INFO - Creating model: RandomForestRegressor
+2025-11-04 15:27:35,639 - src.train_model - INFO - Creating parameter grid for RandomForestRegressor
+2025-11-04 15:27:35,639 - src.train_model - INFO - Created parameter grid with 27 combinations
+2025-11-04 15:27:35,661 - src.train_model - INFO - Checkpoint directory set to: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/checkpoints/RandomForestRegressor
+2025-11-04 15:27:36,760 - src.train_model - INFO - Starting 3-fold cross-validation...
+2025-11-04 15:27:36,760 - src.train_model - INFO - Testing 27 parameter combinations
+2025-11-04 16:10:03,880 - py4j.clientserver - INFO - Closing down clientserver connection
+2025-11-04 16:10:03,880 - py4j.clientserver - INFO - Closing down clientserver connection
+2025-11-04 16:10:03,881 - src.train_model - INFO - Training completed in 2548.27 seconds
+2025-11-04 16:10:03,881 - src.train_model - INFO - Best cross-validation RMSE: 0.7332
+2025-11-04 16:10:03,881 - src.train_model - INFO - Best parameters (combination #25):
+2025-11-04 16:10:03,882 - src.train_model - INFO -   numTrees: 50
+2025-11-04 16:10:03,882 - src.train_model - INFO -   maxDepth: 15
+2025-11-04 16:10:03,882 - src.train_model - INFO -   minInstancesPerNode: 1
+2025-11-04 16:10:03,882 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:03,882 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:03,882 - src.train_model - INFO - ALL MODELS TRAINED IN 2568.79 SECONDS
+2025-11-04 16:10:03,882 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:03,882 - src.train_model - INFO - Selecting best model based on cross-validation RMSE...
+2025-11-04 16:10:03,882 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:03,882 - src.train_model - INFO - BEST MODEL: RandomForestRegressor
+2025-11-04 16:10:03,882 - src.train_model - INFO - Cross-validation RMSE: 0.7332
+2025-11-04 16:10:03,882 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:03,882 - src.train_model - INFO - Saving all trained models...
+2025-11-04 16:10:05,058 - src.train_model - INFO - Model saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/models/all_models/LinearRegression
+2025-11-04 16:10:07,222 - src.train_model - INFO - Model saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/models/all_models/RandomForestRegressor
+2025-11-04 16:10:08,429 - src.train_model - INFO - Model saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/models/best_model
+2025-11-04 16:10:08,430 - src.train_model - INFO - Best model (RandomForestRegressor) saved to: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/models/best_model
+2025-11-04 16:10:08,430 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:08,430 - src.train_model - INFO - TRAINING SUMMARY
+2025-11-04 16:10:08,430 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:08,430 - src.train_model - INFO - Model                          CV RMSE      Time (s)  
+2025-11-04 16:10:08,430 - src.train_model - INFO - ------------------------------------------------------------
+2025-11-04 16:10:08,430 - src.train_model - INFO - RandomForestRegressor          0.7332       2548.27    (*)
+2025-11-04 16:10:08,430 - src.train_model - INFO - LinearRegression               0.7381       20.52         
+2025-11-04 16:10:08,430 - src.train_model - INFO - ------------------------------------------------------------
+2025-11-04 16:10:08,430 - src.train_model - INFO - (*) = Best model
+2025-11-04 16:10:08,430 - src.train_model - INFO - ============================================================
+2025-11-04 16:10:08,430 - src.utils - INFO - Model training completed
+
+2025-11-04 16:10:08,430 - src.utils - INFO - STEP 5: Evaluating Models
+2025-11-04 16:10:08,430 - src.utils - INFO - --------------------------------------------------------------------------------
+2025-11-04 16:10:08,430 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:08,431 - src.evaluate_model - INFO - EVALUATING ALL MODELS ON TEST SET
+2025-11-04 16:10:08,431 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:08,431 - src.evaluate_model - INFO - Evaluating model: LinearRegression
+2025-11-04 16:10:13,047 - src.evaluate_model - INFO -   RMSE: 0.7325
+2025-11-04 16:10:13,129 - src.evaluate_model - INFO -   MAE: 0.5213
+2025-11-04 16:10:13,209 - src.evaluate_model - INFO -   R2: 0.9787
+2025-11-04 16:10:13,287 - src.evaluate_model - INFO -   MSE: 0.5366
+2025-11-04 16:10:13,287 - src.evaluate_model - INFO - Evaluating model: RandomForestRegressor
+2025-11-04 16:10:14,877 - src.evaluate_model - INFO -   RMSE: 0.7083
+2025-11-04 16:10:14,965 - src.evaluate_model - INFO -   MAE: 0.5017
+2025-11-04 16:10:15,041 - src.evaluate_model - INFO -   R2: 0.9801
+2025-11-04 16:10:15,114 - src.evaluate_model - INFO -   MSE: 0.5017
+2025-11-04 16:10:15,114 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:15,114 - src.evaluate_model - INFO - Comparing model performance...
+2025-11-04 16:10:15,116 - src.evaluate_model - INFO - 
+============================================================
+2025-11-04 16:10:15,116 - src.evaluate_model - INFO - MODEL COMPARISON
+2025-11-04 16:10:15,116 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:15,118 - src.evaluate_model - INFO - 
+                Model     rmse      mae       r2      mse
+RandomForestRegressor 0.708283 0.501656 0.980070 0.501665
+     LinearRegression 0.732511 0.521263 0.978684 0.536572
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - BEST MODEL: RandomForestRegressor
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - CREATING VISUALIZATIONS
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:15,119 - src.evaluate_model - INFO - Creating model comparison plot...
+2025-11-04 16:10:16,270 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/model_comparison.png
+2025-11-04 16:10:16,270 - src.evaluate_model - INFO - Creating predictions vs actual plot for LinearRegression...
+2025-11-04 16:10:17,352 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/predictions_vs_actual_LinearRegression.png
+2025-11-04 16:10:17,352 - src.evaluate_model - INFO - Creating residual plot for LinearRegression...
+2025-11-04 16:10:18,398 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/residuals_LinearRegression.png
+2025-11-04 16:10:18,398 - src.evaluate_model - INFO - Creating error distribution plot for LinearRegression...
+2025-11-04 16:10:19,187 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/error_distribution_LinearRegression.png
+2025-11-04 16:10:19,187 - src.evaluate_model - INFO - Creating predictions vs actual plot for RandomForestRegressor...
+2025-11-04 16:10:20,219 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/predictions_vs_actual_RandomForestRegressor.png
+2025-11-04 16:10:20,219 - src.evaluate_model - INFO - Creating residual plot for RandomForestRegressor...
+2025-11-04 16:10:21,141 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/residuals_RandomForestRegressor.png
+2025-11-04 16:10:21,141 - src.evaluate_model - INFO - Creating error distribution plot for RandomForestRegressor...
+2025-11-04 16:10:21,891 - src.evaluate_model - INFO - Plot saved: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/error_distribution_RandomForestRegressor.png
+2025-11-04 16:10:21,892 - src.evaluate_model - INFO - All visualizations created successfully
+2025-11-04 16:10:21,892 - src.evaluate_model - INFO - ============================================================
+2025-11-04 16:10:21,893 - src.evaluate_model - INFO - Results saved to: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/model_results.csv
+2025-11-04 16:10:21,894 - src.evaluate_model - INFO - Generating comprehensive report...
+2025-11-04 16:10:21,895 - src.evaluate_model - INFO - Report saved to: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/model_report.txt
+2025-11-04 16:10:21,895 - src.utils - INFO - Model evaluation completed
+
+2025-11-04 16:10:21,895 - src.utils - INFO - ================================================================================
+2025-11-04 16:10:21,896 - src.utils - INFO - PIPELINE EXECUTION COMPLETED SUCCESSFULLY
+2025-11-04 16:10:21,896 - src.utils - INFO - ================================================================================
+2025-11-04 16:10:21,896 - src.utils - INFO - Total execution time: 48.09 minutes
+2025-11-04 16:10:21,896 - src.utils - INFO - Best model: RandomForestRegressor
+2025-11-04 16:10:21,896 - src.utils - INFO - Best model RMSE: 0.7083
+2025-11-04 16:10:21,896 - src.utils - INFO - Best model R²: 0.9801
+2025-11-04 16:10:21,896 - src.utils - INFO - 
+2025-11-04 16:10:21,896 - src.utils - INFO - Output files:
+2025-11-04 16:10:21,896 - src.utils - INFO -   - Models: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/models
+2025-11-04 16:10:21,896 - src.utils - INFO -   - Results: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/model_results.csv
+2025-11-04 16:10:21,896 - src.utils - INFO -   - Report: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/model_report.txt
+2025-11-04 16:10:21,896 - src.utils - INFO -   - Visualizations: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output
+2025-11-04 16:10:21,896 - src.utils - INFO -   - Feature importance: /home/lxs805655298/Weather-Forecast-using-Spark-MLlib/output/feature_importance.csv
+2025-11-04 16:10:21,896 - src.utils - INFO - ================================================================================
+2025-11-04 16:10:23,283 - src.utils - INFO - Spark session stopped
+2025-11-04 16:10:23,284 - py4j.clientserver - INFO - Closing down clientserver connection

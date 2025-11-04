@@ -19,9 +19,6 @@ Configuration:
     - Model parameters
     - Feature selection options
     - Output preferences
-
-Author: Weather Forecast Team
-Date: 2024
 """
 
 import time

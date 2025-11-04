@@ -153,8 +153,8 @@ HYPERPARAMETERS = {
     "RandomForestRegressor": {
         # SIGNIFICANTLY REDUCED to prevent memory overflow
         # 27 combinations -> 6 combinations
-        "numTrees": [10, 30],           # Reduced from [10, 20, 50]
-        "maxDepth": [5, 10],            # Reduced from [5, 10, 15]
+        "numTrees": [10],           # Reduced from [10, 20, 50]
+        "maxDepth": [5],            # Reduced from [5, 10, 15]
         "minInstancesPerNode": [5]      # Reduced from [1, 5, 10]
     },
     "GBTRegressor": {
